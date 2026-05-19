@@ -14,8 +14,14 @@ This file documents the labels used for Graft issues to guide contributors and m
 - `feature` — New functionality.
 - `enhancement` — Improvement to existing behavior.
 - `documentation` — Docs changes or additions.
-- `discussion` — Questions, debates, or decisions that need agreement.
+- `testing` — Test coverage, regression tests, or validation improvements.
+- `ci` — Continuous integration, workflow automation, or automated checks.
+- `release-management` — Versioning, packaging, release notes, tags, or publication readiness.
+- `maintainer-process` — Repository upkeep, issue triage, PR review, and maintainer workflow improvements.
 - `project-governance` — License, policies, or workflow decisions.
+- `project-decision` — Open product or repository decisions that need agreement before implementation.
+- `discussion` — Questions, debates, or decisions that need agreement.
+- `maintenance` — Routine cleanup, generated output refreshes, or consistency fixes.
 
 ## Status
 
