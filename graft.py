@@ -267,6 +267,43 @@ class InventoryGenerator:
         return "", ""
 
     @classmethod
+    def _yaml_summary(cls, yaml_path: Path) -> tuple[str, str]:
+        try:
+            text = cls._read_text(yaml_path)
+        except (OSError, UnicodeError):
+            return "", ""
+
+        preferred_keys = ("description", "title", "name", "purpose")
+        scalar_pattern = re.compile(r'^\s*([A-Za-z0-9_.-]+)\s*:\s*(.+?)\s*$')
+
+        for line in text.splitlines()[:300]:
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#"):
+                continue
+            if line.startswith((" ", "\t")):
+                continue
+
+            match = scalar_pattern.match(line)
+            if not match:
+                continue
+            key, raw_value = match.groups()
+            lowered = key.lower()
+            if lowered not in preferred_keys:
+                continue
+
+            value = raw_value.split(" #", 1)[0].strip()
+            if value in {"", "|", ">"} or value.startswith(("[", "{", "- ")):
+                continue
+            if (value.startswith('"') and value.endswith('"')) or (value.startswith("'") and value.endswith("'")):
+                value = value[1:-1].strip()
+
+            summary = cls._truncate_summary(value)
+            if summary:
+                return summary, ""
+
+        return "", ""
+
+    @classmethod
     def _leading_comment_summary(cls, source_path: Path) -> tuple[str, str]:
         text = cls._read_text(source_path)
         lines = text.splitlines()
@@ -282,25 +319,29 @@ class InventoryGenerator:
                 return summary, ""
             break
 
-        if lines and lines[0].strip() == "/*":
-            comment_lines: list[str] = []
-            for line in lines[1:40]:
-                stripped = line.strip()
-                if stripped == "*/":
-                    break
-                content = stripped.lstrip("*").strip()
-                if content:
-                    comment_lines.append(content)
-            if comment_lines:
-                return cls._truncate_summary(" ".join(comment_lines)), ""
-
         if lines:
             first = lines[0].strip()
-            if first.startswith("/*") and "*/" in first:
-                body = first[first.find("/*") + 2:first.find("*/")].strip()
-                summary = cls._truncate_summary(body)
-                if summary:
-                    return summary, ""
+            if first.startswith("/*"):
+                comment_lines: list[str] = []
+                inline_rest = first[first.find("/*") + 2 :]
+                if inline_rest:
+                    inline_content = inline_rest.replace("*/", "").lstrip("*").strip()
+                    if inline_content:
+                        comment_lines.append(inline_content)
+                if "*/" not in first:
+                    for line in lines[1:40]:
+                        stripped = line.strip()
+                        if "*/" in stripped:
+                            before_close = stripped.split("*/", 1)[0]
+                            content = before_close.lstrip("*").strip()
+                            if content:
+                                comment_lines.append(content)
+                            break
+                        content = stripped.lstrip("*").strip()
+                        if content:
+                            comment_lines.append(content)
+                if comment_lines:
+                    return cls._truncate_summary(" ".join(comment_lines)), ""
         return "", ""
 
     @staticmethod
@@ -334,6 +375,8 @@ class InventoryGenerator:
                 summary, usage = self._json_summary(path)
             elif kind == "toml":
                 summary, usage = self._toml_summary(path)
+            elif kind == "yaml":
+                summary, usage = self._yaml_summary(path)
             elif kind in {"javascript", "typescript", "css"}:
                 summary, usage = self._leading_comment_summary(path)
 
