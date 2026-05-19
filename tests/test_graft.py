@@ -20,6 +20,54 @@ class InventoryGeneratorTests(unittest.TestCase):
             self.assertEqual(entries[0].kind, "markdown")
             self.assertEqual(entries[0].summary, "First useful line.")
 
+
+    def test_scan_extracts_json_summary_from_description_like_fields(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            config = root / "config.json"
+            config.write_text('{\"name\": \"Demo config\", \"description\": \"Readable summary from json.\"}\n', encoding="utf-8")
+
+            entries = InventoryGenerator(root, extra_ignore_file=root / "missing.ignore").scan()
+
+            self.assertEqual(len(entries), 1)
+            self.assertEqual(entries[0].kind, "json")
+            self.assertEqual(entries[0].summary, "Readable summary from json.")
+
+    def test_scan_extracts_toml_summary_from_description_like_fields(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            project = root / "pyproject.toml"
+            project.write_text('[project]\nname = "demo"\ndescription = "Project summary from toml."\n', encoding="utf-8")
+
+            entries = InventoryGenerator(root, extra_ignore_file=root / "missing.ignore").scan()
+
+            self.assertEqual(len(entries), 1)
+            self.assertEqual(entries[0].kind, "toml")
+            self.assertEqual(entries[0].summary, "Project summary from toml.")
+
+    def test_scan_extracts_javascript_leading_comment_summary(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            script = root / "app.js"
+            script.write_text('// User-facing behavior summary.\nconst x = 1;\n', encoding="utf-8")
+
+            entries = InventoryGenerator(root, extra_ignore_file=root / "missing.ignore").scan()
+
+            self.assertEqual(len(entries), 1)
+            self.assertEqual(entries[0].kind, "javascript")
+            self.assertEqual(entries[0].summary, "User-facing behavior summary.")
+
+    def test_scan_keeps_fallback_when_no_clear_summary(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            data = root / "data.json"
+            data.write_text('{\"items\": [1, 2, 3]}\n', encoding="utf-8")
+
+            entries = InventoryGenerator(root, extra_ignore_file=root / "missing.ignore").scan()
+
+            self.assertEqual(len(entries), 1)
+            self.assertEqual(entries[0].summary, "")
+
     def test_scan_respects_ignored_file_names(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

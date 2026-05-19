@@ -18,6 +18,7 @@ import ast
 import fnmatch
 import json
 import sys
+import tomllib
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -205,6 +206,85 @@ class InventoryGenerator:
                 break
         return summary, usage
 
+
+    @staticmethod
+    def _truncate_summary(text: str, limit: int = 140) -> str:
+        normalized = " ".join(text.split())
+        return normalized[:limit]
+
+    @classmethod
+    def _mapping_summary(cls, data: dict[str, Any]) -> str:
+        preferred_keys = ("description", "title", "name", "purpose")
+        for key in preferred_keys:
+            value = data.get(key)
+            if isinstance(value, str):
+                summary = cls._truncate_summary(value)
+                if summary:
+                    return summary
+        for value in data.values():
+            if isinstance(value, dict):
+                summary = cls._mapping_summary(value)
+                if summary:
+                    return summary
+        return ""
+
+    @classmethod
+    def _json_summary(cls, json_path: Path) -> tuple[str, str]:
+        try:
+            data = json.loads(cls._read_text(json_path))
+        except (OSError, ValueError, UnicodeError):
+            return "", ""
+        if isinstance(data, dict):
+            return cls._mapping_summary(data), ""
+        return "", ""
+
+    @classmethod
+    def _toml_summary(cls, toml_path: Path) -> tuple[str, str]:
+        try:
+            data = tomllib.loads(cls._read_text(toml_path))
+        except (OSError, ValueError, UnicodeError, tomllib.TOMLDecodeError):
+            return "", ""
+        if isinstance(data, dict):
+            return cls._mapping_summary(data), ""
+        return "", ""
+
+    @classmethod
+    def _leading_comment_summary(cls, source_path: Path) -> tuple[str, str]:
+        text = cls._read_text(source_path)
+        lines = text.splitlines()
+        if lines and lines[0].strip().startswith("#!"):
+            lines = lines[1:]
+
+        for line in lines[:40]:
+            stripped = line.strip()
+            if not stripped:
+                continue
+            if stripped.startswith("//"):
+                summary = cls._truncate_summary(stripped[2:].strip())
+                return summary, ""
+            break
+
+        if lines and lines[0].strip() == "/*":
+            comment_lines: list[str] = []
+            for line in lines[1:40]:
+                stripped = line.strip()
+                if stripped == "*/":
+                    break
+                content = stripped.lstrip("*").strip()
+                if content:
+                    comment_lines.append(content)
+            if comment_lines:
+                return cls._truncate_summary(" ".join(comment_lines)), ""
+
+        if lines:
+            first = lines[0].strip()
+            if first.startswith("/*") and "*/" in first:
+                body = first[first.find("/*") + 2:first.find("*/")].strip()
+                summary = cls._truncate_summary(body)
+                if summary:
+                    return summary, ""
+        return "", ""
+
     @staticmethod
     def _default_usage(rel_path: Path) -> str:
         if str(rel_path).endswith(".py"):
@@ -232,6 +312,12 @@ class InventoryGenerator:
                 summary, usage = self._shell_header_summary_and_usage(path)
             elif kind == "markdown":
                 summary, usage = self._markdown_summary(path)
+            elif kind == "json":
+                summary, usage = self._json_summary(path)
+            elif kind == "toml":
+                summary, usage = self._toml_summary(path)
+            elif kind in {"javascript", "typescript", "css"}:
+                summary, usage = self._leading_comment_summary(path)
 
             entries.append(
                 FileEntry(
