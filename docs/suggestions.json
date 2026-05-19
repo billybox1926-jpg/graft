@@ -30,6 +30,63 @@
     "known_open_issues": [
       15,
       16
+    ],
+    "known_closed_issues": [
+      {
+        "issue": 1,
+        "title": "Choose and add a project license",
+        "outcome": "Apache-2.0 license selected, added, and documented."
+      },
+      {
+        "issue": 2,
+        "title": "Add example workflows and CLI usage docs",
+        "outcome": "docs/examples.md added with copy-pasteable CLI workflows."
+      },
+      {
+        "issue": 3,
+        "title": "Implement optional dry-run mode for CLI",
+        "outcome": "--dry-run implemented with tests."
+      },
+      {
+        "issue": 4,
+        "title": "Decide whether generated manifest.json should be tracked",
+        "outcome": "manifest.json remains generated output and ignored by default."
+      },
+      {
+        "issue": 5,
+        "title": "Refresh generated inventories after docs reorganization",
+        "outcome": "README.md and docs/notes.md inventory blocks refreshed after docs moved under docs/."
+      },
+      {
+        "issue": 8,
+        "title": "Expand test coverage for check mode",
+        "outcome": "--check pass/fail behavior covered by unittest tests."
+      },
+      {
+        "issue": 9,
+        "title": "Add tests for custom output targets",
+        "outcome": "Custom README, notes, and manifest output targets covered by tests."
+      },
+      {
+        "issue": 10,
+        "title": "Improve summaries for additional file types",
+        "outcome": "Dependency-free summary extraction expanded for JSON, TOML, and comment-based file types."
+      },
+      {
+        "issue": 13,
+        "title": "Define lightweight lint and format validation policy",
+        "outcome": "Ruff documented as optional local developer tooling, not a runtime dependency or enforced CI gate."
+      },
+      {
+        "issue": 14,
+        "title": "Split CI into focused validation jobs",
+        "outcome": "CI split into lightweight smoke checks and a Python 3.10, 3.11, and 3.12 unit-test matrix."
+      },
+      {
+        "issue": 19,
+        "title": "Round out lightweight summary extraction edge cases",
+        "outcome": "YAML-style metadata and JSDoc-style block-comment summary heuristics added with tests."
+      }
     ]
   },
   "planning_principles": [
@@ -143,14 +200,14 @@
           "acceptance_criteria": [
             "Update docs/architecture.md to describe current summary extraction and testing coverage.",
             "Update docs/ROADMAP.md so completed work is not listed as future work.",
-            "Refresh docs/suggestions.json so remaining release-readiness work points to issues 15 and 16.",
+            "Refresh docs/suggestions.json so remaining release-readiness work points to issues 15 and 16 and completed issues are visible.",
             "Keep README.md and docs/notes.md inventory blocks current."
           ]
         },
         {
           "id": "readme-inventory-refresh",
           "title": "Refresh README and notes inventories after documentation changes",
-          "issue": null,
+          "issue": 5,
           "type": "documentation",
           "priority": "medium",
           "difficulty": "easy",
@@ -187,6 +244,21 @@
           ]
         },
         {
+          "id": "manifest-tracking-policy",
+          "title": "Decide whether generated manifest.json should be tracked",
+          "issue": 4,
+          "type": "project-decision",
+          "priority": "medium",
+          "difficulty": "easy",
+          "status": "complete",
+          "rationale": "manifest.json remains generated output and ignored by default unless a future fixture intentionally tracks a manifest.",
+          "acceptance_criteria": [
+            "Record the tracking policy in documentation.",
+            "Keep manifest.json ignored unless a tracked example is intentionally added.",
+            "Update README.md or docs/examples.md with the chosen guidance."
+          ]
+        },
+        {
           "id": "check-mode-coverage",
           "title": "Expand tests for check mode",
           "issue": 8,
@@ -220,10 +292,40 @@
     },
     {
       "phase": 4,
-      "name": "Automation and quality gates",
+      "name": "Summary extraction and quality gates",
       "status": "complete",
-      "goal": "Keep validation fast, clear, and suitable for a small dependency-free CLI.",
+      "goal": "Improve inventory usefulness and validation while keeping the project lightweight.",
       "tasks": [
+        {
+          "id": "summary-extractor-expansion",
+          "title": "Improve summaries for additional file types",
+          "issue": 10,
+          "type": "enhancement",
+          "priority": "medium",
+          "difficulty": "medium",
+          "status": "complete",
+          "rationale": "Summaries now cover more safe text formats without adding parsers or runtime dependencies.",
+          "acceptance_criteria": [
+            "Keep summary extraction dependency-free.",
+            "Cover JSON, TOML, and comment-based file types with tests.",
+            "Preserve fallback behavior when no clear summary exists."
+          ]
+        },
+        {
+          "id": "summary-extractor-edge-cases",
+          "title": "Round out lightweight summary extraction edge cases",
+          "issue": 19,
+          "type": "enhancement",
+          "priority": "medium",
+          "difficulty": "medium",
+          "status": "complete",
+          "rationale": "YAML-style metadata and JSDoc-style block comments are supported with simple heuristics and focused tests.",
+          "acceptance_criteria": [
+            "Runtime dependencies remain zero.",
+            "Python 3.10+ compatibility is preserved.",
+            "Tests cover YAML-style summary extraction and block-comment summaries."
+          ]
+        },
         {
           "id": "lint-format-policy",
           "title": "Document lightweight lint and format policy",
@@ -345,21 +447,6 @@
             "Add an opt-in flag such as --json.",
             "Keep normal human-readable output unchanged by default.",
             "Document schema and add tests."
-          ]
-        },
-        {
-          "id": "summary-extractor-expansion",
-          "title": "Continue conservative summary extractor improvements",
-          "issue": null,
-          "type": "enhancement",
-          "priority": "low",
-          "difficulty": "medium",
-          "status": "future",
-          "rationale": "Better summaries can help inventories, but parser expansion should stay conservative and dependency-free.",
-          "acceptance_criteria": [
-            "Identify file types that can be summarized safely with simple text rules.",
-            "Avoid heavyweight parsers.",
-            "Add tests for each new extractor."
           ]
         }
       ]
