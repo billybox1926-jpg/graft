@@ -57,19 +57,19 @@ Early setup. The CLI is usable, tests are in place, CI checks the basic Python w
 |------|------|-------------|------------|
 | `.github/workflows/ci.yml` | yaml | CI |  |
 | `.gitignore` | file | (no summary yet) |  |
-| `docs/architecture.md` | markdown | Graft is intentionally small: a single Python CLI that scans a directory, extracts lightweight file summaries, writes a JSON manifest, and u |  |
+| `LICENSE` | file | (no summary yet) |  |
+| `README.md` | markdown | Graft is a small Python command-line tool that scans a directory, writes a JSON manifest, and refreshes Markdown inventory tables between st |  |
 | `docs/CONTRIBUTING.md` | markdown | Thanks for taking a look at Graft. This project is intentionally small: one Python CLI, no runtime dependencies, and a clear job—keep a fold |  |
+| `docs/ROADMAP.md` | markdown | Graft is a small documentation utility for keeping repository inventories honest. The core CLI is stable; release readiness comes next. |  |
+| `docs/architecture.md` | markdown | Graft is intentionally small: a single Python CLI that scans a directory, extracts lightweight file summaries, writes a JSON manifest, and u |  |
 | `docs/examples.md` | markdown | Copy, paste, and run these examples from your repository root. |  |
 | `docs/issue_labels.md` | markdown | This file documents the labels used for Graft issues to guide contributors and maintainers. |  |
 | `docs/maintainer_workflow.md` | markdown | This document describes how maintainers of Graft should handle issues, pull requests, releases, and repository upkeep. |  |
 | `docs/notes.md` | markdown | Notes for the Graft CLI project. |  |
-| `docs/ROADMAP.md` | markdown | Graft is a small documentation utility for keeping repository inventories honest. The current setup is deliberately modest so it can grow wi |  |
-| `docs/suggestions.json` | json | Top-to-bottom project plan for turning Graft from a small working CLI into a well-documented, contributor-friendly, release-ready utility. |  |
+| `docs/suggestions.json` | json | Current project map for keeping Graft small, dependency-free, contributor-friendly, and release-ready. |  |
 | `graft.py` | python | graft — Auto-generate directory inventories and JSON manifests. | Usage: python graft.py --help |
-| `LICENSE` | file | (no summary yet) |  |
 | `pyproject.toml` | toml | Generate Markdown inventories and JSON manifests for small codebases. |  |
-| `README.md` | markdown | Graft is a small Python command-line tool that scans a directory, writes a JSON manifest, and refreshes Markdown inventory tables between st |  |
 | `tests/test_graft.py` | python | (no summary yet) | Usage: python tests/test_graft.py --help |
 
-_Generated: 2026-05-19T12:23:23_
+_Generated: 2026-05-19T19:50:00_
 <!-- END INVENTORY -->

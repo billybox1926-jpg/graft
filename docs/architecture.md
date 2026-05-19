@@ -19,6 +19,7 @@ Graft is intentionally small: a single Python CLI that scans a directory, extrac
 5. Render an inventory table with `render_inventory_md()`.
 6. In normal mode, write the JSON manifest and update Markdown targets.
 7. In check mode, compare generated output against existing files and return a non-zero exit code when anything is stale.
+8. In dry-run mode, print the proposed file changes without writing files.
 
 ## Core components
 
@@ -28,15 +29,19 @@ Graft is intentionally small: a single Python CLI that scans a directory, extrac
 
 ### `InventoryGenerator`
 
-`InventoryGenerator` owns the scanning, summary extraction, rendering, manifest writing, and check-mode validation logic. Keeping this behavior together makes the command-line entry point thin and keeps the tests simple.
+`InventoryGenerator` owns the scanning, summary extraction, rendering, manifest writing, dry-run previews, and check-mode validation logic. Keeping this behavior together makes the command-line entry point thin and keeps the tests simple.
 
 ### Summary extraction
 
-Summary extraction is deliberately conservative:
+Summary extraction is deliberately conservative while covering the file types commonly used in this repository:
 
-- Python files use module docstrings.
-- Shell files use leading comment headers.
+- Python files use module docstrings and optional `Usage:` lines.
+- Shell files use leading comment headers and optional `Usage:` lines.
 - Markdown files use the first non-heading prose line outside generated inventory blocks.
+- JSON files use description-like fields (`description`, `title`, `name`, `purpose`) with recursive lookup in nested objects.
+- TOML files use description-like string keys, including dotted keys such as `project.description`.
+- YAML files use description-like top-level scalar fields when available.
+- JavaScript, TypeScript, and CSS files use leading `//`, `/* ... */`, and JSDoc-style `/** ... */` header comments.
 - Unknown files are listed without summaries.
 
 This keeps the parser fast and safe while still making the inventory useful.
@@ -66,12 +71,15 @@ The notes default lives in `docs/` so support material stays grouped away from t
 
 The current tests cover:
 
-- Markdown summary extraction.
+- Summary extraction for Markdown, JSON, TOML, YAML, JavaScript/TypeScript/CSS leading comments, and JSDoc-style block comments.
 - Ignore pattern behavior.
-- Manifest writing.
+- Manifest writing and default target behavior.
 - Markdown inventory block creation.
+- Custom README, notes, and manifest output target paths.
+- Dry-run behavior, including custom output targets.
+- Check-mode pass/fail behavior for stale and current generated outputs.
 
-Future tests should cover check mode, dry-run mode, and custom target paths.
+Additional future tests can focus on edge cases and larger fixture-style repositories, but the primary CLI guardrails are now under unit-test coverage.
 
 ## Constraints
 
