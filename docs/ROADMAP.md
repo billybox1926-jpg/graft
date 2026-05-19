@@ -5,7 +5,7 @@ Graft is a small documentation utility for keeping repository inventories honest
 ## Now
 
 - Keep the single-file CLI reliable.
-- Maintain unit tests for scanning, ignoring, Markdown updates, and manifest writing.
+- Maintain unit tests for scanning and summary extraction, ignore behavior, Markdown updates, manifest writing, custom target paths, dry-run behavior, and check-mode pass/fail paths.
 - Use GitHub Actions as the basic quality gate.
 - Keep runtime dependencies at zero.
 
@@ -13,8 +13,7 @@ Graft is a small documentation utility for keeping repository inventories honest
 
 - Decide whether generated `manifest.json` should remain ignored or become a tracked artifact for example projects.
 - Add examples that show common workflows: scan current repo, scan a subfolder, write a custom manifest path, and run check mode in CI.
-- Improve summaries for more file types without adding heavyweight parsers.
-- Consider a dry-run mode that prints proposed file changes without writing them.
+- Continue refining summary heuristics for edge cases while keeping the parser lightweight and standard-library only.
 
 ## Later
 

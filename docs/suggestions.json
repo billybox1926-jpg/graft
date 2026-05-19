@@ -278,17 +278,17 @@
         },
         {
           "id": "package-name-review",
-          "title": "Review package name before publication",
+          "title": "Package name and publication readiness",
           "issue": null,
           "type": "release-management",
           "priority": "medium",
           "difficulty": "easy",
           "status": "needed",
-          "rationale": "The local package metadata uses graft-inventory. Before publishing, confirm the name, command, and README language are final.",
+          "rationale": "Before first publication, maintainers should confirm package naming and complete publication-readiness checks.",
           "acceptance_criteria": [
             "Confirm package name availability and intent.",
             "Confirm console script name remains graft.",
-            "Update README install guidance once publication is planned."
+            "Document publication-readiness checklist and update README install guidance once publication is planned."
           ]
         },
         {
@@ -403,7 +403,7 @@
       ]
     },
     {
-      "title": "Review package name before publication",
+      "title": "Package name and publication readiness",
       "priority": "medium",
       "labels": [
         "release-management",
