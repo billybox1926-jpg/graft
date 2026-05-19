@@ -69,6 +69,43 @@ class InventoryGeneratorTests(unittest.TestCase):
             self.assertEqual(entries[0].kind, "javascript")
             self.assertEqual(entries[0].summary, "User-facing behavior summary.")
 
+
+    def test_scan_extracts_yaml_summary_from_description_like_field(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            config = root / "config.yaml"
+            config.write_text("description: Useful yaml summary.\n", encoding="utf-8")
+
+            entries = InventoryGenerator(root, extra_ignore_file=root / "missing.ignore").scan()
+
+            self.assertEqual(len(entries), 1)
+            self.assertEqual(entries[0].kind, "yaml")
+            self.assertEqual(entries[0].summary, "Useful yaml summary.")
+
+    def test_scan_yaml_keeps_fallback_when_no_clear_summary(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            data = root / "settings.yml"
+            data.write_text("items:\n  - one\n  - two\n", encoding="utf-8")
+
+            entries = InventoryGenerator(root, extra_ignore_file=root / "missing.ignore").scan()
+
+            self.assertEqual(len(entries), 1)
+            self.assertEqual(entries[0].kind, "yaml")
+            self.assertEqual(entries[0].summary, "")
+
+    def test_scan_extracts_jsdoc_style_block_comment_summary(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            script = root / "app.js"
+            script.write_text("/**\n * JSDoc style header summary.\n */\nconst x = 1;\n", encoding="utf-8")
+
+            entries = InventoryGenerator(root, extra_ignore_file=root / "missing.ignore").scan()
+
+            self.assertEqual(len(entries), 1)
+            self.assertEqual(entries[0].kind, "javascript")
+            self.assertEqual(entries[0].summary, "JSDoc style header summary.")
+
     def test_scan_keeps_fallback_when_no_clear_summary(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
