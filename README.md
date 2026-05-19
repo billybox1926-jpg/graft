@@ -15,6 +15,18 @@ Graft is a small Python command-line tool that scans a directory, writes a JSON 
 
 Python 3.10 or newer. No runtime dependencies.
 
+## Packaging and contributor installs
+
+- The intended Python package name is **`graft-inventory`**, as defined in `pyproject.toml`.
+- The installed console command remains **`graft`**.
+- For local contributor setup, use an editable install from the repository root:
+
+```bash
+python -m pip install -e .
+```
+
+- Publishing to PyPI is intentionally deferred. Do not add publishing automation unless a maintainer explicitly chooses to handle that in a later issue.
+
 ## Quick start
 
 ```bash
@@ -71,5 +83,5 @@ Early setup. The CLI is usable, tests are in place, CI checks the basic Python w
 | `pyproject.toml` | toml | Generate Markdown inventories and JSON manifests for small codebases. |  |
 | `tests/test_graft.py` | python | (no summary yet) | Usage: python tests/test_graft.py --help |
 
-_Generated: 2026-05-19T19:50:00_
+_Generated: 2026-05-19T20:10:00_
 <!-- END INVENTORY -->
