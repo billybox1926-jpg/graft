@@ -114,5 +114,65 @@ class DryRunTests(unittest.TestCase):
             self.assertFalse(custom_manifest.exists())
 
 
+class CheckModeTests(unittest.TestCase):
+    def _prepare_generated_outputs(self, root: Path) -> tuple[Path, Path, Path]:
+        readme = root / "README.md"
+        notes = root / "docs" / "notes.md"
+        manifest = root / "manifest.json"
+        (root / "demo.py").write_text("print('demo')\n", encoding="utf-8")
+        readme.write_text("# Demo\n", encoding="utf-8")
+        notes.parent.mkdir(parents=True, exist_ok=True)
+        notes.write_text("# Notes\n", encoding="utf-8")
+        exit_code = main([str(root)])
+        self.assertEqual(exit_code, 0)
+        return readme, notes, manifest
+
+    def test_check_mode_passes_when_outputs_are_current(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            readme, notes, manifest = self._prepare_generated_outputs(root)
+            before_readme = readme.read_text(encoding="utf-8")
+            before_notes = notes.read_text(encoding="utf-8")
+            before_manifest = manifest.read_text(encoding="utf-8")
+
+            exit_code = main([str(root), "--check"])
+
+            self.assertEqual(exit_code, 0)
+            self.assertEqual(before_readme, readme.read_text(encoding="utf-8"))
+            self.assertEqual(before_notes, notes.read_text(encoding="utf-8"))
+            self.assertEqual(before_manifest, manifest.read_text(encoding="utf-8"))
+
+    def test_check_mode_fails_when_readme_inventory_is_stale(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            readme, notes, manifest = self._prepare_generated_outputs(root)
+            readme.write_text("# Demo\n\nStale inventory text.\n", encoding="utf-8")
+            before_readme = readme.read_text(encoding="utf-8")
+            before_notes = notes.read_text(encoding="utf-8")
+            before_manifest = manifest.read_text(encoding="utf-8")
+
+            exit_code = main([str(root), "--check"])
+
+            self.assertEqual(exit_code, 1)
+            self.assertEqual(before_readme, readme.read_text(encoding="utf-8"))
+            self.assertEqual(before_notes, notes.read_text(encoding="utf-8"))
+            self.assertEqual(before_manifest, manifest.read_text(encoding="utf-8"))
+
+    def test_check_mode_fails_when_manifest_is_missing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            readme, notes, manifest = self._prepare_generated_outputs(root)
+            manifest.unlink()
+            before_readme = readme.read_text(encoding="utf-8")
+            before_notes = notes.read_text(encoding="utf-8")
+
+            exit_code = main([str(root), "--check"])
+
+            self.assertEqual(exit_code, 1)
+            self.assertFalse(manifest.exists())
+            self.assertEqual(before_readme, readme.read_text(encoding="utf-8"))
+            self.assertEqual(before_notes, notes.read_text(encoding="utf-8"))
+
+
 if __name__ == "__main__":
     unittest.main()
