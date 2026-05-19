@@ -1,73 +1,421 @@
 {
   "project": "graft",
   "generated_at": "2026-05-19",
-  "purpose": "Structured suggestion backlog for small, contributor-friendly improvements to the Graft CLI project.",
-  "suggestions": [
+  "purpose": "Top-to-bottom project plan for turning Graft from a small working CLI into a well-documented, contributor-friendly, release-ready utility.",
+  "current_state": {
+    "summary": "Graft is a dependency-free Python CLI that scans a directory, writes a JSON manifest, and refreshes Markdown inventory tables between stable markers.",
+    "default_branch": "master",
+    "runtime": "Python 3.10+",
+    "entry_points": [
+      "python graft.py .",
+      "graft"
+    ],
+    "core_files": [
+      "graft.py",
+      "pyproject.toml",
+      "README.md",
+      ".github/workflows/ci.yml",
+      "tests/test_graft.py"
+    ],
+    "docs_files": [
+      "docs/architecture.md",
+      "docs/CONTRIBUTING.md",
+      "docs/issue_labels.md",
+      "docs/maintainer_workflow.md",
+      "docs/notes.md",
+      "docs/ROADMAP.md",
+      "docs/suggestions.json"
+    ],
+    "known_open_issues": [
+      1,
+      2,
+      3,
+      4
+    ]
+  },
+  "planning_principles": [
+    "Keep runtime dependencies at zero unless a feature clearly cannot be built with the Python standard library.",
+    "Prefer small, reviewable changes over large rewrites.",
+    "Keep public-facing README content concise and move deeper process notes into docs/.",
+    "Protect human-authored Markdown outside generated inventory markers.",
+    "Make contributor tasks concrete, labeled, and testable.",
+    "Use check mode and tests as the guardrails for generated content behavior."
+  ],
+  "project_plan": [
     {
-      "id": "license-selection",
-      "title": "Choose and add a project license",
-      "issue": 1,
-      "type": "project-governance",
+      "phase": 1,
+      "name": "Foundation and repository posture",
+      "status": "in_progress",
+      "goal": "Make the repository safe, understandable, and ready for contributors before feature expansion.",
+      "tasks": [
+        {
+          "id": "license-selection",
+          "title": "Choose and add a project license",
+          "issue": 1,
+          "type": "project-governance",
+          "priority": "high",
+          "difficulty": "easy",
+          "status": "open",
+          "rationale": "The repository currently has no explicit reuse permissions, so contributors and users need a clear license before public distribution or packaging.",
+          "acceptance_criteria": [
+            "Add a LICENSE file at the repository root.",
+            "Update README.md so it no longer says license permissions are undecided.",
+            "Confirm the chosen license matches the maintainer's intended reuse posture."
+          ]
+        },
+        {
+          "id": "repo-docs-organization",
+          "title": "Keep support documentation organized under docs/",
+          "issue": null,
+          "type": "documentation",
+          "priority": "high",
+          "difficulty": "easy",
+          "status": "complete",
+          "rationale": "Support docs should not crowd the root README. The root should remain a clean landing page while docs/ holds deeper process material.",
+          "acceptance_criteria": [
+            "Move notes and contributing material into docs/.",
+            "Keep root-level support-doc duplicates removed.",
+            "Update CLI defaults and inventories so docs/notes.md is the notes target."
+          ]
+        },
+        {
+          "id": "label-taxonomy",
+          "title": "Document issue labels and project taxonomy",
+          "issue": null,
+          "type": "maintainer-process",
+          "priority": "medium",
+          "difficulty": "easy",
+          "status": "complete",
+          "rationale": "A small repo still needs consistent labels so issues are easy to sort and contributors know what kind of work is available.",
+          "acceptance_criteria": [
+            "Add docs/issue_labels.md.",
+            "Document label categories for priority, type, status, and miscellaneous states.",
+            "Use the label taxonomy when creating future issues."
+          ]
+        }
+      ]
+    },
+    {
+      "phase": 2,
+      "name": "Documentation and onboarding",
+      "status": "in_progress",
+      "goal": "Give users and contributors enough context to run, understand, and improve the project without needing private chat history.",
+      "tasks": [
+        {
+          "id": "usage-examples",
+          "title": "Add example workflows and CLI usage docs",
+          "issue": 2,
+          "type": "documentation",
+          "priority": "high",
+          "difficulty": "easy",
+          "status": "open",
+          "rationale": "Concrete examples make the CLI easier to understand and give new contributors safe documentation work to start with.",
+          "acceptance_criteria": [
+            "Add docs/examples.md or an equivalent examples document.",
+            "Document at least three copy-pasteable commands.",
+            "Include examples for scanning a repository, scanning a subfolder, custom output targets, and using check mode."
+          ]
+        },
+        {
+          "id": "architecture-doc",
+          "title": "Maintain architecture documentation",
+          "issue": null,
+          "type": "documentation",
+          "priority": "medium",
+          "difficulty": "easy",
+          "status": "complete",
+          "rationale": "Architecture notes explain the flow from CLI parsing to scanning, rendering, writing, and check-mode validation.",
+          "acceptance_criteria": [
+            "Add docs/architecture.md.",
+            "Describe the core flow and InventoryGenerator responsibilities.",
+            "Keep architecture notes updated when core behavior changes."
+          ]
+        },
+        {
+          "id": "maintainer-workflow-doc",
+          "title": "Maintain project workflow documentation",
+          "issue": null,
+          "type": "maintainer-process",
+          "priority": "medium",
+          "difficulty": "easy",
+          "status": "complete",
+          "rationale": "Maintainer workflow docs keep issue handling, PR review, CI checks, and release routines consistent.",
+          "acceptance_criteria": [
+            "Add docs/maintainer_workflow.md.",
+            "Document issue handling, pull request review, CI, releases, and documentation upkeep.",
+            "Reference docs/CONTRIBUTING.md and docs/issue_labels.md where appropriate."
+          ]
+        },
+        {
+          "id": "readme-inventory-refresh",
+          "title": "Refresh README and notes inventories after documentation moves",
+          "issue": null,
+          "type": "documentation",
+          "priority": "high",
+          "difficulty": "easy",
+          "status": "needed",
+          "rationale": "The README inventory should reflect the final docs/ layout and should not list moved root files.",
+          "acceptance_criteria": [
+            "Run or manually apply the generated inventory update after docs are moved.",
+            "Ensure README.md lists docs/CONTRIBUTING.md and docs/notes.md, not root copies.",
+            "Ensure docs/notes.md inventory is current."
+          ]
+        }
+      ]
+    },
+    {
+      "phase": 3,
+      "name": "CLI safety and usability",
+      "status": "planned",
+      "goal": "Make Graft safer to preview, easier to verify, and more pleasant to use in real repositories.",
+      "tasks": [
+        {
+          "id": "dry-run-mode",
+          "title": "Implement optional dry-run mode for CLI",
+          "issue": 3,
+          "type": "feature",
+          "priority": "medium",
+          "difficulty": "medium",
+          "status": "open",
+          "rationale": "A dry-run mode would let users preview manifest and Markdown inventory changes without touching files.",
+          "acceptance_criteria": [
+            "Add a --dry-run CLI option.",
+            "Print which files would be created or updated.",
+            "Do not modify files while dry-run mode is active.",
+            "Add tests that prove files are left unchanged."
+          ]
+        },
+        {
+          "id": "check-mode-coverage",
+          "title": "Expand tests for check mode",
+          "issue": null,
+          "type": "testing",
+          "priority": "medium",
+          "difficulty": "medium",
+          "status": "needed",
+          "rationale": "Check mode is the core CI guardrail and should be tested for both passing and stale-output cases.",
+          "acceptance_criteria": [
+            "Test check mode returns zero when generated files are current.",
+            "Test check mode returns non-zero when README inventory is stale.",
+            "Test check mode returns non-zero when manifest is missing or stale."
+          ]
+        },
+        {
+          "id": "custom-target-tests",
+          "title": "Add tests for custom README, notes, and manifest targets",
+          "issue": null,
+          "type": "testing",
+          "priority": "medium",
+          "difficulty": "medium",
+          "status": "needed",
+          "rationale": "Custom output paths are part of the CLI contract and should stay stable.",
+          "acceptance_criteria": [
+            "Test --readme writes to a custom Markdown file.",
+            "Test --notes writes to a custom Markdown file.",
+            "Test --manifest writes JSON to a custom path."
+          ]
+        }
+      ]
+    },
+    {
+      "phase": 4,
+      "name": "Generated artifact policy",
+      "status": "planned",
+      "goal": "Decide how generated manifests and inventory examples should be represented without creating noisy diffs for normal users.",
+      "tasks": [
+        {
+          "id": "manifest-tracking-policy",
+          "title": "Decide whether generated manifest.json should be tracked",
+          "issue": 4,
+          "type": "project-decision",
+          "priority": "medium",
+          "difficulty": "easy",
+          "status": "open",
+          "rationale": "Generated manifests are useful examples, but tracking them by default can create noisy diffs in real projects.",
+          "acceptance_criteria": [
+            "Record the tracking policy in documentation.",
+            "Keep manifest.json ignored unless a tracked example is intentionally added.",
+            "Update README.md or docs/examples.md with the chosen guidance."
+          ]
+        },
+        {
+          "id": "example-fixture-project",
+          "title": "Add a tiny example project fixture",
+          "issue": null,
+          "type": "documentation",
+          "priority": "low",
+          "difficulty": "medium",
+          "status": "optional",
+          "rationale": "A tiny example fixture would show users what Graft changes look like without requiring them to experiment on their own repo.",
+          "acceptance_criteria": [
+            "Add a small examples/ directory only if the manifest tracking policy allows it.",
+            "Include a before/after style explanation in docs/examples.md.",
+            "Avoid creating a large or noisy sample project."
+          ]
+        }
+      ]
+    },
+    {
+      "phase": 5,
+      "name": "Packaging and release readiness",
+      "status": "planned",
+      "goal": "Prepare Graft for safe installation, tagging, and possible publication once the license and CLI surface are stable.",
+      "tasks": [
+        {
+          "id": "versioning-policy",
+          "title": "Define versioning and release process",
+          "issue": null,
+          "type": "release-management",
+          "priority": "medium",
+          "difficulty": "easy",
+          "status": "needed",
+          "rationale": "The package has version metadata, but maintainers need a clear process for bumps, tags, and release notes.",
+          "acceptance_criteria": [
+            "Document when to bump patch, minor, or major versions.",
+            "Document release checklist in docs/maintainer_workflow.md.",
+            "Keep pyproject.toml version aligned with tags."
+          ]
+        },
+        {
+          "id": "package-name-review",
+          "title": "Review package name before publication",
+          "issue": null,
+          "type": "release-management",
+          "priority": "medium",
+          "difficulty": "easy",
+          "status": "needed",
+          "rationale": "The local package metadata uses graft-inventory. Before publishing, confirm the name, command, and README language are final.",
+          "acceptance_criteria": [
+            "Confirm package name availability and intent.",
+            "Confirm console script name remains graft.",
+            "Update README install guidance once publication is planned."
+          ]
+        },
+        {
+          "id": "release-ci-checks",
+          "title": "Add release-focused CI checks when ready",
+          "issue": null,
+          "type": "ci",
+          "priority": "low",
+          "difficulty": "medium",
+          "status": "future",
+          "rationale": "Basic CI exists now. Release CI can wait until package publication is a real goal.",
+          "acceptance_criteria": [
+            "Add package build validation.",
+            "Validate metadata with standard Python packaging tools if dependencies are acceptable for development only.",
+            "Keep runtime dependency-free even if development tooling is added."
+          ]
+        }
+      ]
+    },
+    {
+      "phase": 6,
+      "name": "Future feature polish",
+      "status": "future",
+      "goal": "Add useful features only after the core contract is stable and well-tested.",
+      "tasks": [
+        {
+          "id": "manifest-compare-mode",
+          "title": "Consider manifest comparison mode",
+          "issue": null,
+          "type": "feature",
+          "priority": "low",
+          "difficulty": "medium",
+          "status": "future",
+          "rationale": "Comparing old and new manifests could help maintainers understand what changed between scans.",
+          "acceptance_criteria": [
+            "Define expected input format for old and new manifests.",
+            "Print added, removed, and changed files clearly.",
+            "Add tests for comparison output."
+          ]
+        },
+        {
+          "id": "machine-readable-check-output",
+          "title": "Consider machine-readable check output",
+          "issue": null,
+          "type": "feature",
+          "priority": "low",
+          "difficulty": "medium",
+          "status": "future",
+          "rationale": "JSON output for check mode could make Graft easier to integrate into dashboards or bots.",
+          "acceptance_criteria": [
+            "Add an opt-in flag such as --json.",
+            "Keep normal human-readable output unchanged by default.",
+            "Document schema and add tests."
+          ]
+        },
+        {
+          "id": "summary-extractor-expansion",
+          "title": "Improve summaries for more file types",
+          "issue": null,
+          "type": "enhancement",
+          "priority": "low",
+          "difficulty": "medium",
+          "status": "future",
+          "rationale": "Better summaries make inventories more useful, but parser expansion should stay conservative and dependency-free.",
+          "acceptance_criteria": [
+            "Identify file types that can be summarized safely with simple text rules.",
+            "Avoid heavyweight parsers.",
+            "Add tests for each new extractor."
+          ]
+        }
+      ]
+    }
+  ],
+  "next_best_actions": [
+    "Refresh README.md and docs/notes.md inventories so they reflect the final docs/ layout.",
+    "Create issues for needed tasks that do not yet have issue numbers, starting with check-mode coverage and custom target tests.",
+    "Resolve the license decision before public distribution or package publication.",
+    "Add docs/examples.md to make the CLI workflow copy-pasteable.",
+    "Implement --dry-run once tests around current write behavior are stronger."
+  ],
+  "issue_creation_queue": [
+    {
+      "title": "Refresh generated inventories after docs reorganization",
       "priority": "high",
-      "difficulty": "easy",
-      "status": "open",
-      "rationale": "The repository currently has no explicit reuse permissions, so contributors and users need a clear license before public distribution or packaging.",
-      "acceptance_criteria": [
-        "Add a LICENSE file at the repository root.",
-        "Update README.md so it no longer says license permissions are undecided.",
-        "Confirm the chosen license matches the maintainer's intended reuse posture."
+      "labels": [
+        "documentation",
+        "maintenance"
       ]
     },
     {
-      "id": "usage-examples",
-      "title": "Add example workflows and CLI usage docs",
-      "issue": 2,
-      "type": "documentation",
-      "priority": "high",
-      "difficulty": "easy",
-      "status": "open",
-      "rationale": "Concrete examples make the CLI easier to understand and give new contributors safe documentation work to start with.",
-      "acceptance_criteria": [
-        "Add docs/examples.md or an equivalent examples document.",
-        "Document at least three copy-pasteable commands.",
-        "Include examples for scanning a repository, scanning a subfolder, and using check mode."
-      ]
-    },
-    {
-      "id": "dry-run-mode",
-      "title": "Implement optional dry-run mode for CLI",
-      "issue": 3,
-      "type": "feature",
+      "title": "Expand test coverage for check mode",
       "priority": "medium",
-      "difficulty": "medium",
-      "status": "open",
-      "rationale": "A dry-run mode would let users preview manifest and Markdown inventory changes without touching files.",
-      "acceptance_criteria": [
-        "Add a --dry-run CLI option.",
-        "Print which files would be created or updated.",
-        "Do not modify files while dry-run mode is active.",
-        "Add tests that prove files are left unchanged."
+      "labels": [
+        "testing",
+        "good first issue"
       ]
     },
     {
-      "id": "manifest-tracking-policy",
-      "title": "Decide whether generated manifest.json should be tracked",
-      "issue": 4,
-      "type": "project-decision",
+      "title": "Add tests for custom output targets",
       "priority": "medium",
-      "difficulty": "easy",
-      "status": "open",
-      "rationale": "Generated manifests are useful examples, but tracking them by default can create noisy diffs in real projects.",
-      "acceptance_criteria": [
-        "Record the tracking policy in documentation.",
-        "Keep manifest.json ignored unless a tracked example is intentionally added.",
-        "Update README.md or docs/examples.md with the chosen guidance."
+      "labels": [
+        "testing",
+        "good first issue"
+      ]
+    },
+    {
+      "title": "Define versioning and release process",
+      "priority": "medium",
+      "labels": [
+        "documentation",
+        "release-management"
+      ]
+    },
+    {
+      "title": "Review package name before publication",
+      "priority": "medium",
+      "labels": [
+        "release-management",
+        "discussion"
       ]
     }
   ],
   "maintenance_notes": [
     "Keep this file hand-editable and dependency-free.",
-    "When an issue closes, update the matching suggestion status.",
-    "Prefer small suggestions that are easy for contributors to understand and verify."
+    "When an issue closes, update the matching task status.",
+    "When a new issue is created from issue_creation_queue, move or link it into the relevant project_plan phase.",
+    "Prefer small suggestions that are easy for contributors to understand and verify.",
+    "Treat this file as the project map, not as generated output from the CLI."
   ]
 }
