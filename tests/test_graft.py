@@ -51,5 +51,68 @@ class InventoryGeneratorTests(unittest.TestCase):
             self.assertFalse((root / "notes.md").exists())
 
 
+class DryRunTests(unittest.TestCase):
+    def test_dry_run_does_not_create_missing_outputs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "demo.py").write_text("print('demo')\n", encoding="utf-8")
+
+            exit_code = main([str(root), "--dry-run"])
+
+            self.assertEqual(exit_code, 0)
+            self.assertFalse((root / "manifest.json").exists())
+            self.assertFalse((root / "README.md").exists())
+            self.assertFalse((root / "docs" / "notes.md").exists())
+
+    def test_dry_run_does_not_modify_existing_outputs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            readme = root / "README.md"
+            notes = root / "docs" / "notes.md"
+            manifest = root / "manifest.json"
+            notes.parent.mkdir(parents=True, exist_ok=True)
+            (root / "demo.py").write_text("print('demo')\n", encoding="utf-8")
+            readme.write_text("# Demo\n", encoding="utf-8")
+            notes.write_text("# Notes\n", encoding="utf-8")
+            manifest.write_text('{"files": []}\n', encoding="utf-8")
+
+            before_readme = readme.read_text(encoding="utf-8")
+            before_notes = notes.read_text(encoding="utf-8")
+            before_manifest = manifest.read_text(encoding="utf-8")
+
+            exit_code = main([str(root), "--dry-run"])
+
+            self.assertEqual(exit_code, 0)
+            self.assertEqual(before_readme, readme.read_text(encoding="utf-8"))
+            self.assertEqual(before_notes, notes.read_text(encoding="utf-8"))
+            self.assertEqual(before_manifest, manifest.read_text(encoding="utf-8"))
+
+    def test_dry_run_with_custom_targets_does_not_write_files(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            custom_readme = root / "docs" / "INVENTORY.md"
+            custom_notes = root / "docs" / "STATUS.md"
+            custom_manifest = root / "artifacts" / "manifest.json"
+            (root / "demo.py").write_text("print('demo')\n", encoding="utf-8")
+
+            exit_code = main(
+                [
+                    str(root),
+                    "--dry-run",
+                    "--readme",
+                    str(custom_readme),
+                    "--notes",
+                    str(custom_notes),
+                    "--manifest",
+                    str(custom_manifest),
+                ]
+            )
+
+            self.assertEqual(exit_code, 0)
+            self.assertFalse(custom_readme.exists())
+            self.assertFalse(custom_notes.exists())
+            self.assertFalse(custom_manifest.exists())
+
+
 if __name__ == "__main__":
     unittest.main()

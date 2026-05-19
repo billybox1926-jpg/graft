@@ -19,6 +19,7 @@ Python 3.10 or newer. No runtime dependencies.
 
 ```bash
 python graft.py .
+python graft.py . --dry-run
 python graft.py . --check
 python graft.py ./src --readme ./src/README.md --notes ./docs/INVENTORY.md --manifest ./docs/manifest.json
 ```
@@ -66,5 +67,5 @@ Early setup. The CLI is usable, tests are in place, CI checks the basic Python w
 | `pyproject.toml` | toml | (no summary yet) |  |
 | `tests/test_graft.py` | python | (no summary yet) | Usage: python tests/test_graft.py --help |
 
-_Generated: 2026-05-19T17:30:00_
+_Generated: 2026-05-19T17:35:45_
 <!-- END INVENTORY -->
