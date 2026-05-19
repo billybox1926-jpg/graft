@@ -351,7 +351,7 @@ class InventoryGenerator:
                 original = self._read_text(target)
                 updated = self.replace_block(original, inventory_md)
                 self._write_text(target, updated)
-                print(f"  ✓ updated {target.relative_to(Path.cwd())}")
+                print(f"  ✓ updated {target.relative_to(Path.cwd()) if target.is_relative_to(Path.cwd()) else target}")
             else:
                 # Create with markers if missing
                 target.write_text(
@@ -360,7 +360,7 @@ class InventoryGenerator:
                     encoding="utf-8",
                     newline="\n",
                 )
-                print(f"  ✓ created {target.relative_to(Path.cwd())}")
+                print(f"  ✓ created {target.relative_to(Path.cwd()) if target.is_relative_to(Path.cwd()) else target}")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -446,7 +446,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         return generator.check_targets(entries, inventory_md, [readme, notes], manifest)
 
     generator.write_manifest(entries, manifest)
-    print(f"   Wrote {manifest.relative_to(Path.cwd())}")
+    try:
+        display_manifest = manifest.relative_to(Path.cwd()) if manifest.is_relative_to(Path.cwd()) else manifest
+    except ValueError:
+        display_manifest = manifest
+    print(f"   Wrote {display_manifest}")
 
     generator.update_targets(entries, [readme, notes])
     print("✅ Done.")
