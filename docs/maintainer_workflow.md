@@ -42,9 +42,20 @@ Use this checklist for every intentional release:
      - `python -m unittest discover -s tests -v`
      - `python -m pip install -e .`
      - `graft --help`
-     - `python graft.py . --check` (only after refreshing tracked inventory targets)
+     - `python graft.py . --check` only after refreshing tracked inventory targets.
+2. **Version update**
+   - Decide patch/minor/major bump using the rules above.
+   - Update `pyproject.toml` version to the selected release version.
+3. **Tagging**
+   - Create the Git tag **after** version updates and verification pass.
+   - Use a `v`-prefixed tag format, for example: `v0.1.0`.
+4. **GitHub release notes**
+   - Create a GitHub Release for the tag and summarize key user-facing changes.
+5. **Post-release cleanup**
+   - Verify repository docs remain accurate after the release.
+   - Open follow-up issues for deferred work discovered during release prep.
 
-### Release-candidate packaging validation (issue #28)
+### Release-candidate packaging validation
 
 Use this lightweight validation pass before cutting a release candidate:
 
@@ -58,9 +69,20 @@ Use this lightweight validation pass before cutting a release candidate:
    - `python -m pip install -e .`
 4. Verify the installed console command entry point:
    - `graft --help`
-5. Validate inventory/manifest outputs in a clean-checkout style path:
-   - Because `manifest.json` is intentionally ignored, `python graft.py . --check` can fail in a fresh checkout unless outputs are generated first.
-   - Use a temporary manifest output path to keep the check deterministic without tracking generated JSON:
+5. Validate inventory and manifest outputs using a temporary manifest path when working from a clean checkout.
+
+Because `manifest.json` is intentionally ignored, `python graft.py . --check` can fail in a fresh checkout unless outputs are generated first. To keep the check deterministic without tracking generated JSON, use a temporary manifest path.
+
+PowerShell:
+
+```powershell
+$tmpManifest = [System.IO.Path]::GetTempFileName()
+python graft.py . --manifest $tmpManifest
+python graft.py . --manifest $tmpManifest --check
+Remove-Item $tmpManifest
+```
+
+Bash:
 
 ```bash
 tmp_manifest="$(mktemp /tmp/graft-manifest.XXXXXX.json)"
@@ -69,18 +91,7 @@ python graft.py . --manifest "$tmp_manifest" --check
 rm -f "$tmp_manifest"
 ```
 
-This preserves the no-runtime-dependencies policy and avoids adding release/publish automation.
-2. **Version update**
-   - Decide patch/minor/major bump using the rules above.
-   - Update `pyproject.toml` version to the selected release version.
-3. **Tagging**
-   - Create the Git tag **after** version updates and verification pass.
-   - Use a `v`-prefixed tag format, for example: `v0.1.0`.
-4. **GitHub release notes**
-   - Create a GitHub Release for the tag and summarize key user-facing changes.
-5. **Post-release cleanup**
-   - Verify repository docs remain accurate after the release.
-   - Open follow-up issues for deferred work discovered during release prep.
+This preserves the no-runtime-dependencies policy and avoids adding release or package upload automation.
 
 ### Version and tag alignment
 
