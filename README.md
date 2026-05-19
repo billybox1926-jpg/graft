@@ -1,5 +1,10 @@
 # Graft
 
+[![CI](https://github.com/billybox1926-jpg/graft/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/billybox1926-jpg/graft/actions/workflows/ci.yml)
+![Version](https://img.shields.io/badge/version-v0.1.0-blue)
+![Python](https://img.shields.io/badge/python-3.10%2B-blue)
+![License](https://img.shields.io/badge/license-Apache--2.0-blue)
+
 Graft is a small Python command-line tool that scans a directory, writes a JSON manifest, and refreshes Markdown inventory tables between stable markers.
 
 ## Features
