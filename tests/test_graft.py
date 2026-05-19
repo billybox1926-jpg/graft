@@ -35,9 +35,9 @@ class InventoryGeneratorTests(unittest.TestCase):
     def test_main_writes_manifest_and_markdown_blocks(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
+            notes = root / "docs" / "notes.md"
             (root / ".gitignore").write_text("manifest.json\n", encoding="utf-8")
             (root / "README.md").write_text("# Demo\n", encoding="utf-8")
-            (root / "notes.md").write_text("# Notes\n", encoding="utf-8")
             (root / "demo.py").write_text("print('demo')\n", encoding="utf-8")
 
             exit_code = main([str(root)])
@@ -47,7 +47,8 @@ class InventoryGeneratorTests(unittest.TestCase):
             paths = {item["path"] for item in manifest["files"]}
             self.assertIn("demo.py", paths)
             self.assertIn("<!-- BEGIN INVENTORY -->", (root / "README.md").read_text(encoding="utf-8"))
-            self.assertIn("<!-- BEGIN INVENTORY -->", (root / "notes.md").read_text(encoding="utf-8"))
+            self.assertIn("<!-- BEGIN INVENTORY -->", notes.read_text(encoding="utf-8"))
+            self.assertFalse((root / "notes.md").exists())
 
 
 if __name__ == "__main__":
