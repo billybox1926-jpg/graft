@@ -40,7 +40,9 @@ Use this checklist for every intentional release:
    - Confirm the target branch is current and CI is green.
    - Run local verification commands:
      - `python -m unittest discover -s tests -v`
-     - `python graft.py . --check`
+     - `python -m pip install -e .`
+     - `graft --help`
+     - `python graft.py . --check` only after refreshing tracked inventory targets.
 2. **Version update**
    - Decide patch/minor/major bump using the rules above.
    - Update `pyproject.toml` version to the selected release version.
@@ -52,6 +54,44 @@ Use this checklist for every intentional release:
 5. **Post-release cleanup**
    - Verify repository docs remain accurate after the release.
    - Open follow-up issues for deferred work discovered during release prep.
+
+### Release-candidate packaging validation
+
+Use this lightweight validation pass before cutting a release candidate:
+
+1. Confirm `pyproject.toml` metadata stays aligned with project constraints:
+   - package name is `graft-inventory`
+   - `requires-python` remains `>=3.10`
+   - no runtime dependency list is added under `[project]`
+2. Run unit tests:
+   - `python -m unittest discover -s tests -v`
+3. Verify editable packaging install from the repository root:
+   - `python -m pip install -e .`
+4. Verify the installed console command entry point:
+   - `graft --help`
+5. Validate inventory and manifest outputs using a temporary manifest path when working from a clean checkout.
+
+Because `manifest.json` is intentionally ignored, `python graft.py . --check` can fail in a fresh checkout unless outputs are generated first. To keep the check deterministic without tracking generated JSON, use a temporary manifest path.
+
+PowerShell:
+
+```powershell
+$tmpManifest = [System.IO.Path]::GetTempFileName()
+python graft.py . --manifest $tmpManifest
+python graft.py . --manifest $tmpManifest --check
+Remove-Item $tmpManifest
+```
+
+Bash:
+
+```bash
+tmp_manifest="$(mktemp /tmp/graft-manifest.XXXXXX.json)"
+python graft.py . --manifest "$tmp_manifest"
+python graft.py . --manifest "$tmp_manifest" --check
+rm -f "$tmp_manifest"
+```
+
+This preserves the no-runtime-dependencies policy and avoids adding release or package upload automation.
 
 ### Version and tag alignment
 
