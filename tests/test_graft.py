@@ -51,6 +51,50 @@ class InventoryGeneratorTests(unittest.TestCase):
             self.assertFalse((root / "notes.md").exists())
 
 
+class CustomTargetTests(unittest.TestCase):
+    def test_custom_manifest_output_path_writes_without_default_manifest(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            custom_manifest = root / "artifacts" / "manifest.json"
+            (root / "README.md").write_text("# Demo\n", encoding="utf-8")
+            (root / "demo.py").write_text("print('demo')\n", encoding="utf-8")
+
+            exit_code = main([str(root), "--manifest", str(custom_manifest)])
+
+            self.assertEqual(exit_code, 0)
+            self.assertTrue(custom_manifest.exists())
+            self.assertFalse((root / "manifest.json").exists())
+
+    def test_custom_readme_target_writes_without_default_readme_or_default_notes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            custom_readme = root / "docs" / "INVENTORY.md"
+            (root / "demo.py").write_text("print('demo')\n", encoding="utf-8")
+
+            exit_code = main([str(root), "--readme", str(custom_readme), "--notes", str(root / "docs" / "STATUS.md")])
+
+            self.assertEqual(exit_code, 0)
+            self.assertTrue(custom_readme.exists())
+            self.assertIn("<!-- BEGIN INVENTORY -->", custom_readme.read_text(encoding="utf-8"))
+            self.assertFalse((root / "README.md").exists())
+            self.assertFalse((root / "docs" / "notes.md").exists())
+
+    def test_custom_notes_target_writes_without_default_notes_or_default_readme(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            custom_notes = root / "docs" / "STATUS.md"
+            (root / "demo.py").write_text("print('demo')\n", encoding="utf-8")
+
+            exit_code = main([str(root), "--notes", str(custom_notes), "--readme", str(root / "docs" / "INVENTORY.md")])
+
+            self.assertEqual(exit_code, 0)
+            self.assertTrue(custom_notes.exists())
+            self.assertIn("<!-- BEGIN INVENTORY -->", custom_notes.read_text(encoding="utf-8"))
+            self.assertFalse((root / "docs" / "notes.md").exists())
+            self.assertFalse((root / "README.md").exists())
+
+
+
 class DryRunTests(unittest.TestCase):
     def test_dry_run_does_not_create_missing_outputs(self):
         with tempfile.TemporaryDirectory() as tmp:
