@@ -24,6 +24,10 @@ python graft.py . --check
 python graft.py ./src --readme ./src/README.md --notes ./docs/INVENTORY.md --manifest ./docs/manifest.json
 ```
 
+## Generated manifest policy
+
+`manifest.json` is generated output and is ignored by default. Keep it untracked unless a project intentionally wants to review manifest changes.
+
 ## Documentation
 
 - [Examples](docs/examples.md)
