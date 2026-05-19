@@ -4,6 +4,8 @@ __pycache__/
 *$py.class
 *.so
 .Python
+.venv/
+venv/
 env/
 build/
 develop-eggs/
@@ -21,12 +23,20 @@ wheels/
 .installed.cfg
 *.egg
 
+# Tooling and coverage
+.pytest_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+.mypy_cache/
+
 # Backups
 *.bak
 *.swp
 *~
 
-# Project Specific
+# Project specific
 manifest.json
 .DS_Store
 Thumbs.db
