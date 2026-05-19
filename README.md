@@ -23,6 +23,13 @@ python graft.py . --check
 python graft.py ./src --readme ./src/README.md --notes ./docs/INVENTORY.md --manifest ./docs/manifest.json
 ```
 
+
+## Documentation
+
+- [Examples](docs/examples.md)
+- [Architecture](docs/architecture.md)
+- [Contributing](docs/CONTRIBUTING.md)
+
 ## Development
 
 ```bash
@@ -46,6 +53,7 @@ Early setup. The CLI is usable, tests are in place, and CI checks the basic Pyth
 | `docs/CONTRIBUTING.md` | markdown | Thanks for taking a look at Graft. This project is intentionally small: one Python CLI, no runtime dependencies, and a clear job—keep a fold |  |
 | `docs/ROADMAP.md` | markdown | Graft is a small documentation utility for keeping repository inventories honest. The current setup is deliberately modest so it can grow wi |  |
 | `docs/architecture.md` | markdown | Graft is intentionally small: a single Python CLI that scans a directory, extracts lightweight file summaries, writes a JSON manifest, and u |  |
+| `docs/examples.md` | markdown | Copy, paste, and run these examples from your repository root. |  |
 | `docs/issue_labels.md` | markdown | This file documents the labels used for Graft issues to guide contributors and maintainers. |  |
 | `docs/maintainer_workflow.md` | markdown | This document describes how maintainers of Graft should handle issues, pull requests, releases, and repository upkeep. |  |
 | `docs/notes.md` | markdown | Notes for the Graft CLI project. |  |
@@ -54,5 +62,5 @@ Early setup. The CLI is usable, tests are in place, and CI checks the basic Pyth
 | `pyproject.toml` | toml | (no summary yet) |  |
 | `tests/test_graft.py` | python | (no summary yet) | Usage: python tests/test_graft.py --help |
 
-_Generated: 2026-05-19T16:52:11_
+_Generated: 2026-05-19T16:57:45_
 <!-- END INVENTORY -->
