@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """
-inventory-manifest — Auto-generate directory inventory and manifest.
+graft — Auto-generate directory inventories and JSON manifests.
 
-Scans any folder, writes a JSON manifest, and regenerates inventory
-sections in Markdown files between configurable markers.
+Scans a folder, writes a JSON manifest, and regenerates inventory sections
+in Markdown files between configurable markers.
 
 Example:
-    inventory-manifest ./src --readme ./src/README.md --notes ./src/CHANGELOG.md
-    inventory-manifest ./tools --check
-    inventory-manifest . --manifest ./dist/manifest.json --exclude "*.pyc" --exclude "node_modules"
+    graft ./src --readme ./src/README.md --notes ./src/CHANGELOG.md
+    graft ./tools --check
+    graft . --manifest ./dist/manifest.json --exclude "*.pyc" --exclude "node_modules"
 """
 
 from __future__ import annotations
@@ -18,19 +18,20 @@ import ast
 import fnmatch
 import json
 import sys
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Sequence
 
 
+VERSION = "0.1.0"
 DEFAULT_BEGIN = "<!-- BEGIN INVENTORY -->"
 DEFAULT_END = "<!-- END INVENTORY -->"
 
 
-@dataclass
+@dataclass(frozen=True)
 class FileEntry:
-    path: str          # relative to scan root
+    path: str
     kind: str
     size_bytes: int
     mtime_iso: str
@@ -59,7 +60,7 @@ class InventoryGenerator:
         exclude_files: set[str] | None = None,
         exclude_patterns: Sequence[str] = (),
         extra_ignore_file: Path | None = None,
-    ):
+    ) -> None:
         self.root = root.resolve()
         self.begin = begin_marker
         self.end = end_marker
@@ -68,7 +69,6 @@ class InventoryGenerator:
         self.exclude_patterns = list(exclude_patterns)
         self._gitignore_patterns: list[str] = []
 
-        # Load ignore patterns from .gitignore if present and requested
         ignore_source = extra_ignore_file or (self.root / ".gitignore")
         if ignore_source.exists():
             self._gitignore_patterns = [
@@ -77,99 +77,114 @@ class InventoryGenerator:
                 if line.strip() and not line.strip().startswith("#")
             ]
 
-    # ------------------------------------------------------------------ #
-    # Helpers
-    # ------------------------------------------------------------------ #
     @staticmethod
-    def _read_text(p: Path) -> str:
-        return p.read_text(encoding="utf-8", errors="replace")
+    def _read_text(path: Path) -> str:
+        return path.read_text(encoding="utf-8", errors="replace")
 
     @staticmethod
-    def _write_text(p: Path, s: str) -> None:
-        p.write_text(s, encoding="utf-8", newline="\n")
+    def _write_text(path: Path, text: str) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8", newline="\n")
 
     @staticmethod
-    def _mtime_iso(p: Path) -> str:
-        return datetime.fromtimestamp(p.stat().st_mtime).isoformat(timespec="seconds")
+    def _mtime_iso(path: Path) -> str:
+        return datetime.fromtimestamp(path.stat().st_mtime).isoformat(timespec="seconds")
 
     @staticmethod
-    def _kind_for(p: Path) -> str:
-        if p.is_dir():
-            return "dir"
-        ext = p.suffix.lower()
+    def _kind_for(path: Path) -> str:
+        ext = path.suffix.lower()
         mapping = {
-            ".py": "python",
-            ".sh": "shell", ".bash": "shell",
-            ".md": "markdown",
+            ".bash": "shell",
+            ".css": "css",
+            ".go": "go",
+            ".html": "html",
+            ".js": "javascript",
             ".json": "json",
-            ".yml": "yaml", ".yaml": "yaml",
+            ".md": "markdown",
+            ".py": "python",
+            ".rs": "rust",
+            ".sh": "shell",
+            ".toml": "toml",
+            ".ts": "typescript",
             ".txt": "text",
-            ".js": "javascript", ".ts": "typescript",
-            ".html": "html", ".css": "css",
-            ".rs": "rust", ".go": "go",
+            ".yaml": "yaml",
+            ".yml": "yaml",
         }
         return mapping.get(ext, "file")
 
     @staticmethod
-    def _first_line(s: str) -> str:
-        for line in s.splitlines():
+    def _first_line(text: str) -> str:
+        for line in text.splitlines():
             stripped = line.strip()
             if stripped:
                 return stripped
         return ""
 
     def _is_ignored(self, rel_path: str) -> bool:
-        """Check path against name, file, pattern, and gitignore exclusions."""
-        parts = Path(rel_path).parts
+        rel = rel_path.replace("\\", "/")
+        parts = Path(rel).parts
         if any(part in self.exclude_names for part in parts):
             return True
-        if Path(rel_path).name in self.exclude_files:
+        if Path(rel).name in self.exclude_files:
             return True
 
-        for pat in self.exclude_patterns:
-            if fnmatch.fnmatch(rel_path, pat) or fnmatch.fnmatch(Path(rel_path).name, pat):
+        for pattern in [*self.exclude_patterns, *self._gitignore_patterns]:
+            pattern = pattern.replace("\\", "/")
+            if not pattern or pattern.startswith("!"):
+                continue
+            if pattern.endswith("/") and (rel.startswith(pattern.rstrip("/") + "/") or rel == pattern.rstrip("/")):
                 return True
-
-        for pat in self._gitignore_patterns:
-            if fnmatch.fnmatch(rel_path, pat):
+            if fnmatch.fnmatch(rel, pattern) or fnmatch.fnmatch(Path(rel).name, pattern):
                 return True
-            # Directory-style patterns
-            if pat.endswith("/") and rel_path.startswith(pat.rstrip("/")):
-                return True
-            # Common gitignore directory wildcards
-            if fnmatch.fnmatch(rel_path, f"*/{pat}") or fnmatch.fnmatch(rel_path, f"{pat}/*"):
+            if fnmatch.fnmatch(rel, f"*/{pattern}") or fnmatch.fnmatch(rel, f"{pattern}/*"):
                 return True
         return False
 
-    # ------------------------------------------------------------------ #
-    # Extractors
-    # ------------------------------------------------------------------ #
     @classmethod
     def _py_docstring_summary_and_usage(cls, py_path: Path) -> tuple[str, str]:
         try:
-            src = cls._read_text(py_path)
-            mod = ast.parse(src)
-            doc = ast.get_docstring(mod) or ""
-        except Exception:
-            return ("", "")
+            source = cls._read_text(py_path)
+            module = ast.parse(source)
+            doc = ast.get_docstring(module) or ""
+        except (OSError, SyntaxError, UnicodeError):
+            return "", ""
 
         summary = cls._first_line(doc)
         usage = ""
         lines = doc.splitlines()
-        for i, line in enumerate(lines):
+        for index, line in enumerate(lines):
             stripped = line.strip()
             if stripped.lower().startswith("usage:"):
                 rest = stripped[6:].strip()
                 if rest:
                     usage = "Usage: " + rest
                     break
-                for next_line in lines[i + 1:]:
-                    ns = next_line.strip()
-                    if ns:
-                        usage = "Usage: " + ns
+                for next_line in lines[index + 1 :]:
+                    candidate = next_line.strip()
+                    if candidate:
+                        usage = "Usage: " + candidate
                         break
                 break
         return summary, usage
+
+    @classmethod
+    def _markdown_summary(cls, md_path: Path) -> tuple[str, str]:
+        text = cls._read_text(md_path)
+        in_generated_block = False
+        for raw_line in text.splitlines():
+            line = raw_line.strip()
+            if line == DEFAULT_BEGIN:
+                in_generated_block = True
+                continue
+            if line == DEFAULT_END:
+                in_generated_block = False
+                continue
+            if in_generated_block or not line:
+                continue
+            if line.startswith("#"):
+                continue
+            return line[:140], ""
+        return "", ""
 
     @classmethod
     def _shell_header_summary_and_usage(cls, sh_path: Path) -> tuple[str, str]:
@@ -177,18 +192,17 @@ class InventoryGenerator:
         summary = ""
         usage = ""
         for line in text.splitlines()[:40]:
-            ls = line.strip()
-            if ls.startswith("#!"):
+            stripped = line.strip()
+            if stripped.startswith("#!"):
                 continue
-            if ls.startswith("#"):
-                content = ls.lstrip("#").strip()
+            if stripped.startswith("#"):
+                content = stripped.lstrip("#").strip()
                 if content and not summary:
                     summary = content
                 if content.lower().startswith("usage:") and not usage:
-                    usage = "Usage: " + content[len("usage:"):].strip()
-            else:
-                if summary or usage:
-                    break
+                    usage = "Usage: " + content[len("usage:") :].strip()
+            elif summary or usage:
+                break
         return summary, usage
 
     @staticmethod
@@ -199,44 +213,38 @@ class InventoryGenerator:
             return f"Usage: bash {rel_path}"
         return ""
 
-    # ------------------------------------------------------------------ #
-    # Core scan
-    # ------------------------------------------------------------------ #
     def scan(self) -> list[FileEntry]:
         entries: list[FileEntry] = []
-        for p in sorted(self.root.rglob("*")):
-            if p.is_dir():
+        for path in sorted(self.root.rglob("*")):
+            if path.is_dir():
                 continue
-            rel = p.relative_to(self.root).as_posix()
+            rel = path.relative_to(self.root).as_posix()
             if self._is_ignored(rel):
                 continue
 
-            kind = self._kind_for(p)
-            summary, usage = "", ""
+            kind = self._kind_for(path)
+            summary = ""
+            usage = ""
 
             if kind == "python":
-                summary, usage = self._py_docstring_summary_and_usage(p)
+                summary, usage = self._py_docstring_summary_and_usage(path)
             elif kind == "shell":
-                summary, usage = self._shell_header_summary_and_usage(p)
-
-            if not usage:
-                usage = self._default_usage(rel)
+                summary, usage = self._shell_header_summary_and_usage(path)
+            elif kind == "markdown":
+                summary, usage = self._markdown_summary(path)
 
             entries.append(
                 FileEntry(
                     path=rel,
                     kind=kind,
-                    size_bytes=p.stat().st_size,
-                    mtime_iso=self._mtime_iso(p),
+                    size_bytes=path.stat().st_size,
+                    mtime_iso=self._mtime_iso(path),
                     summary=summary,
-                    usage=usage,
+                    usage=usage or self._default_usage(rel),
                 )
             )
         return entries
 
-    # ------------------------------------------------------------------ #
-    # Rendering
-    # ------------------------------------------------------------------ #
     def render_inventory_md(self, entries: list[FileEntry]) -> str:
         lines = [
             "## Inventory",
@@ -244,32 +252,29 @@ class InventoryGenerator:
             "| File | Type | Description | How to run |",
             "|------|------|-------------|------------|",
         ]
-        for e in entries:
-            desc = e.summary if e.summary else "(no summary yet)"
-            run = e.usage if e.usage else ""
-            lines.append(f"| `{e.path}` | {e.kind} | {desc} | {run} |")
+        for entry in entries:
+            desc = entry.summary or "(no summary yet)"
+            run = entry.usage or ""
+            lines.append(f"| `{entry.path}` | {entry.kind} | {desc} | {run} |")
         lines.append("")
         lines.append(f"_Generated: {datetime.now().isoformat(timespec='seconds')}_")
         return "\n".join(lines)
 
     @staticmethod
     def _strip_generated_line(block_md: str) -> str:
-        lines = [
-            line for line in block_md.strip().splitlines()
-            if not line.startswith("_Generated:")
-        ]
+        lines = [line for line in block_md.strip().splitlines() if not line.startswith("_Generated:")]
         return "\n".join(lines).strip()
 
     @classmethod
     def _stable_manifest_files(cls, entries: list[FileEntry]) -> list[dict[str, str]]:
         return [
             {
-                "path": e.path,
-                "kind": e.kind,
-                "summary": e.summary,
-                "usage": e.usage,
+                "path": entry.path,
+                "kind": entry.kind,
+                "summary": entry.summary,
+                "usage": entry.usage,
             }
-            for e in entries
+            for entry in entries
         ]
 
     def _extract_block(self, text: str) -> str:
@@ -286,9 +291,6 @@ class InventoryGenerator:
         _, after = rest.split(self.end, 1)
         return before.rstrip() + "\n\n" + self.begin + "\n" + block_md + "\n" + self.end + after
 
-    # ------------------------------------------------------------------ #
-    # Validation / Write
-    # ------------------------------------------------------------------ #
     def check_targets(
         self,
         entries: list[FileEntry],
@@ -333,14 +335,14 @@ class InventoryGenerator:
                 print(f"[error] {error}", file=sys.stderr)
             return 1
 
-        print("✅ Generated inventory and manifest are up to date.")
+        print("Generated inventory and manifest are up to date.")
         return 0
 
     def write_manifest(self, entries: list[FileEntry], manifest_path: Path) -> None:
         manifest = {
             "generated_at": datetime.now().isoformat(timespec="seconds"),
             "root": str(self.root),
-            "files": [e.to_dict() for e in entries],
+            "files": [entry.to_dict() for entry in entries],
         }
         self._write_text(manifest_path, json.dumps(manifest, indent=2, ensure_ascii=True) + "\n")
 
@@ -351,16 +353,10 @@ class InventoryGenerator:
                 original = self._read_text(target)
                 updated = self.replace_block(original, inventory_md)
                 self._write_text(target, updated)
-                print(f"  ✓ updated {target.relative_to(Path.cwd()) if target.is_relative_to(Path.cwd()) else target}")
+                print(f"  updated {target}")
             else:
-                # Create with markers if missing
-                target.write_text(
-                    f"# {target.stem}\n\n"
-                    f"{self.begin}\n{inventory_md}\n{self.end}\n",
-                    encoding="utf-8",
-                    newline="\n",
-                )
-                print(f"  ✓ created {target.relative_to(Path.cwd()) if target.is_relative_to(Path.cwd()) else target}")
+                self._write_text(target, f"# {target.stem}\n\n{self.begin}\n{inventory_md}\n{self.end}\n")
+                print(f"  created {target}")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -376,42 +372,16 @@ examples:
         """,
     )
     parser.add_argument("directory", type=Path, help="Root directory to scan")
-    parser.add_argument(
-        "--readme", type=Path, default=None,
-        help="Markdown file to inject inventory into (default: <directory>/README.md)"
-    )
-    parser.add_argument(
-        "--notes", type=Path, default=None,
-        help="Second Markdown file to inject inventory into (default: <directory>/notes.md)"
-    )
-    parser.add_argument(
-        "--manifest", type=Path, default=None,
-        help="Output JSON manifest path (default: <directory>/manifest.json)"
-    )
-    parser.add_argument(
-        "--check", action="store_true",
-        help="Validate targets without rewriting files"
-    )
-    parser.add_argument(
-        "--begin-marker", default=DEFAULT_BEGIN,
-        help=f"Opening marker (default: '{DEFAULT_BEGIN}')"
-    )
-    parser.add_argument(
-        "--end-marker", default=DEFAULT_END,
-        help=f"Closing marker (default: '{DEFAULT_END}')"
-    )
-    parser.add_argument(
-        "--exclude", action="append", default=[],
-        help="Additional fnmatch patterns to exclude (can be used multiple times)"
-    )
-    parser.add_argument(
-        "--ignore-file", type=Path, default=None,
-        help="Path to a gitignore-style file to use for exclusions (defaults to .gitignore in scanned directory)"
-    )
-    parser.add_argument(
-        "--no-gitignore", action="store_true",
-        help="Do not read .gitignore from the scanned directory"
-    )
+    parser.add_argument("--version", action="version", version=f"graft {VERSION}")
+    parser.add_argument("--readme", type=Path, default=None, help="Markdown file to update")
+    parser.add_argument("--notes", type=Path, default=None, help="Second Markdown file to update")
+    parser.add_argument("--manifest", type=Path, default=None, help="Output JSON manifest path")
+    parser.add_argument("--check", action="store_true", help="Validate targets without rewriting files")
+    parser.add_argument("--begin-marker", default=DEFAULT_BEGIN, help="Opening marker")
+    parser.add_argument("--end-marker", default=DEFAULT_END, help="Closing marker")
+    parser.add_argument("--exclude", action="append", default=[], help="Additional fnmatch pattern to exclude")
+    parser.add_argument("--ignore-file", type=Path, default=None, help="Gitignore-style file to use for exclusions")
+    parser.add_argument("--no-gitignore", action="store_true", help="Do not read .gitignore")
     return parser
 
 
@@ -436,24 +406,18 @@ def main(argv: Sequence[str] | None = None) -> int:
         extra_ignore_file=None if args.no_gitignore else (args.ignore_file or (root / ".gitignore")),
     )
 
-    print(f"🔍 Scanning {root} …")
+    print(f"Scanning {root} ...")
     entries = generator.scan()
-    print(f"   Found {len(entries)} file(s).")
+    print(f"Found {len(entries)} file(s).")
 
     inventory_md = generator.render_inventory_md(entries)
-
     if args.check:
         return generator.check_targets(entries, inventory_md, [readme, notes], manifest)
 
     generator.write_manifest(entries, manifest)
-    try:
-        display_manifest = manifest.relative_to(Path.cwd()) if manifest.is_relative_to(Path.cwd()) else manifest
-    except ValueError:
-        display_manifest = manifest
-    print(f"   Wrote {display_manifest}")
-
+    print(f"Wrote {manifest}")
     generator.update_targets(entries, [readme, notes])
-    print("✅ Done.")
+    print("Done.")
     return 0
 
 
