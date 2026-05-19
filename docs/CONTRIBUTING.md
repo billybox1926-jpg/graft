@@ -31,6 +31,31 @@ On Windows PowerShell, activate the environment with:
 
 Keep changes dependency-free unless there is a strong reason not to. Graft should stay easy to run in a fresh checkout, on small machines, and inside lightweight automation.
 
+### Lint and format policy (lightweight)
+
+Graft uses [Ruff](https://docs.astral.sh/ruff/) as optional **developer tooling** for lint and format checks. Ruff is configured in `pyproject.toml`, but it is **not** required for basic CLI usage and is currently **not enforced in CI**.
+
+Policy:
+
+- Runtime dependencies must remain zero.
+- Lint/format checks are local, opt-in quality checks for contributors.
+- CI continues to validate syntax, tests, and CLI behavior only.
+- Python compatibility remains 3.10+.
+
+If you want to run lint/format checks locally, use:
+
+```bash
+python -m pip install ruff
+python -m ruff check .
+python -m ruff format --check .
+```
+
+To apply formatting changes:
+
+```bash
+python -m ruff format .
+```
+
 Before opening a pull request, run:
 
 ```bash
