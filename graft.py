@@ -206,10 +206,10 @@ class InventoryGenerator:
         return summary, usage
 
     @staticmethod
-    def _default_usage(rel_path: str) -> str:
-        if rel_path.endswith(".py"):
+    def _default_usage(rel_path: Path) -> str:
+        if str(rel_path).endswith(".py"):
             return f"Usage: python {rel_path} --help"
-        if rel_path.endswith(".sh"):
+        if str(rel_path).endswith(".sh"):
             return f"Usage: bash {rel_path}"
         return ""
 
@@ -368,7 +368,7 @@ examples:
   %(prog)s ./projects
   %(prog)s ./projects --check
   %(prog)s ./src --manifest ./docs/manifest.json
-  %(prog)s . --exclude "*.pyc" --exclude "node_modules" --readme README.md
+  %(prog)s . --exclude "*.pyc" --exclude "node_modules" --readme README.md --notes docs/notes.md
         """,
     )
     parser.add_argument("directory", type=Path, help="Root directory to scan")
@@ -395,7 +395,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 1
 
     readme = args.readme or (root / "README.md")
-    notes = args.notes or (root / "notes.md")
+    notes = args.notes or (root / "docs/notes.md")
     manifest = args.manifest or (root / "manifest.json")
 
     generator = InventoryGenerator(
