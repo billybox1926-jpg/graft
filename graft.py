@@ -18,7 +18,7 @@ import ast
 import fnmatch
 import json
 import sys
-import tomllib
+import re
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -241,11 +241,29 @@ class InventoryGenerator:
     @classmethod
     def _toml_summary(cls, toml_path: Path) -> tuple[str, str]:
         try:
-            data = tomllib.loads(cls._read_text(toml_path))
-        except (OSError, ValueError, UnicodeError, tomllib.TOMLDecodeError):
+            text = cls._read_text(toml_path)
+        except (OSError, UnicodeError):
             return "", ""
-        if isinstance(data, dict):
-            return cls._mapping_summary(data), ""
+        preferred_keys = ("description", "title", "name", "purpose")
+        pattern = re.compile(r'^\s*([A-Za-z0-9_.-]+)\s*=\s*"([^"]*)"')
+        matches: dict[str, str] = {}
+        for line in text.splitlines()[:300]:
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#"):
+                continue
+            match = pattern.match(line)
+            if not match:
+                continue
+            dotted_key, value = match.groups()
+            key = dotted_key.rsplit(".", 1)[-1].lower()
+            if key in preferred_keys:
+                summary = cls._truncate_summary(value)
+                if summary and key not in matches:
+                    matches[key] = summary
+        for key in preferred_keys:
+            summary = matches.get(key, "")
+            if summary:
+                return summary, ""
         return "", ""
 
     @classmethod
