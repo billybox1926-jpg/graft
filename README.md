@@ -23,7 +23,6 @@ python graft.py . --check
 python graft.py ./src --readme ./src/README.md --notes ./docs/INVENTORY.md --manifest ./docs/manifest.json
 ```
 
-
 ## Documentation
 
 - [Examples](docs/examples.md)
@@ -38,9 +37,13 @@ python -m unittest discover -s tests -v
 python graft.py --help
 ```
 
+## License
+
+Graft is licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) for details.
+
 ## Status
 
-Early setup. The CLI is usable, tests are in place, and CI checks the basic Python workflow. A project license has not been selected yet.
+Early setup. The CLI is usable, tests are in place, CI checks the basic Python workflow, and the project is licensed under Apache-2.0.
 
 <!-- BEGIN INVENTORY -->
 ## Inventory
@@ -49,6 +52,7 @@ Early setup. The CLI is usable, tests are in place, and CI checks the basic Pyth
 |------|------|-------------|------------|
 | `.github/workflows/ci.yml` | yaml | (no summary yet) |  |
 | `.gitignore` | file | (no summary yet) |  |
+| `LICENSE` | file | (no summary yet) |  |
 | `README.md` | markdown | Graft is a small Python command-line tool that scans a directory, writes a JSON manifest, and refreshes Markdown inventory tables between st |  |
 | `docs/CONTRIBUTING.md` | markdown | Thanks for taking a look at Graft. This project is intentionally small: one Python CLI, no runtime dependencies, and a clear job—keep a fold |  |
 | `docs/ROADMAP.md` | markdown | Graft is a small documentation utility for keeping repository inventories honest. The current setup is deliberately modest so it can grow wi |  |
@@ -62,5 +66,5 @@ Early setup. The CLI is usable, tests are in place, and CI checks the basic Pyth
 | `pyproject.toml` | toml | (no summary yet) |  |
 | `tests/test_graft.py` | python | (no summary yet) | Usage: python tests/test_graft.py --help |
 
-_Generated: 2026-05-19T16:57:45_
+_Generated: 2026-05-19T17:30:00_
 <!-- END INVENTORY -->
