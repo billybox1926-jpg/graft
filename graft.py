@@ -338,6 +338,42 @@ class InventoryGenerator:
         print("Generated inventory and manifest are up to date.")
         return 0
 
+
+    def dry_run_targets(
+        self,
+        entries: list[FileEntry],
+        targets: Sequence[Path],
+        manifest_path: Path,
+    ) -> None:
+        inventory_md = self.render_inventory_md(entries)
+        print("Dry run: no files will be written.")
+
+        if manifest_path.exists():
+            current = self._read_text(manifest_path)
+            manifest = {
+                "generated_at": datetime.now().isoformat(timespec="seconds"),
+                "root": str(self.root),
+                "files": [entry.to_dict() for entry in entries],
+            }
+            proposed = json.dumps(manifest, indent=2, ensure_ascii=True) + "\n"
+            if current == proposed:
+                print(f"  unchanged {manifest_path}")
+            else:
+                print(f"  would update {manifest_path}")
+        else:
+            print(f"  would create {manifest_path}")
+
+        for target in targets:
+            if target.exists():
+                original = self._read_text(target)
+                updated = self.replace_block(original, inventory_md)
+                if original == updated:
+                    print(f"  unchanged {target}")
+                else:
+                    print(f"  would update {target}")
+            else:
+                print(f"  would create {target}")
+
     def write_manifest(self, entries: list[FileEntry], manifest_path: Path) -> None:
         manifest = {
             "generated_at": datetime.now().isoformat(timespec="seconds"),
@@ -377,6 +413,7 @@ examples:
     parser.add_argument("--notes", type=Path, default=None, help="Second Markdown file to update")
     parser.add_argument("--manifest", type=Path, default=None, help="Output JSON manifest path")
     parser.add_argument("--check", action="store_true", help="Validate targets without rewriting files")
+    parser.add_argument("--dry-run", action="store_true", help="Preview target changes without writing files")
     parser.add_argument("--begin-marker", default=DEFAULT_BEGIN, help="Opening marker")
     parser.add_argument("--end-marker", default=DEFAULT_END, help="Closing marker")
     parser.add_argument("--exclude", action="append", default=[], help="Additional fnmatch pattern to exclude")
@@ -413,6 +450,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     inventory_md = generator.render_inventory_md(entries)
     if args.check:
         return generator.check_targets(entries, inventory_md, [readme, notes], manifest)
+
+    if args.dry_run:
+        generator.dry_run_targets(entries, [readme, notes], manifest)
+        print("Done (dry-run).")
+        return 0
 
     generator.write_manifest(entries, manifest)
     print(f"Wrote {manifest}")
