@@ -40,7 +40,36 @@ Use this checklist for every intentional release:
    - Confirm the target branch is current and CI is green.
    - Run local verification commands:
      - `python -m unittest discover -s tests -v`
-     - `python graft.py . --check`
+     - `python -m pip install -e .`
+     - `graft --help`
+     - `python graft.py . --check` (only after refreshing tracked inventory targets)
+
+### Release-candidate packaging validation (issue #28)
+
+Use this lightweight validation pass before cutting a release candidate:
+
+1. Confirm `pyproject.toml` metadata stays aligned with project constraints:
+   - package name is `graft-inventory`
+   - `requires-python` remains `>=3.10`
+   - no runtime dependency list is added under `[project]`
+2. Run unit tests:
+   - `python -m unittest discover -s tests -v`
+3. Verify editable packaging install from the repository root:
+   - `python -m pip install -e .`
+4. Verify the installed console command entry point:
+   - `graft --help`
+5. Validate inventory/manifest outputs in a clean-checkout style path:
+   - Because `manifest.json` is intentionally ignored, `python graft.py . --check` can fail in a fresh checkout unless outputs are generated first.
+   - Use a temporary manifest output path to keep the check deterministic without tracking generated JSON:
+
+```bash
+tmp_manifest="$(mktemp /tmp/graft-manifest.XXXXXX.json)"
+python graft.py . --manifest "$tmp_manifest"
+python graft.py . --manifest "$tmp_manifest" --check
+rm -f "$tmp_manifest"
+```
+
+This preserves the no-runtime-dependencies policy and avoids adding release/publish automation.
 2. **Version update**
    - Decide patch/minor/major bump using the rules above.
    - Update `pyproject.toml` version to the selected release version.
