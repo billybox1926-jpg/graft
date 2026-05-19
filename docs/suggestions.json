@@ -1,0 +1,73 @@
+{
+  "project": "graft",
+  "generated_at": "2026-05-19",
+  "purpose": "Structured suggestion backlog for small, contributor-friendly improvements to the Graft CLI project.",
+  "suggestions": [
+    {
+      "id": "license-selection",
+      "title": "Choose and add a project license",
+      "issue": 1,
+      "type": "project-governance",
+      "priority": "high",
+      "difficulty": "easy",
+      "status": "open",
+      "rationale": "The repository currently has no explicit reuse permissions, so contributors and users need a clear license before public distribution or packaging.",
+      "acceptance_criteria": [
+        "Add a LICENSE file at the repository root.",
+        "Update README.md so it no longer says license permissions are undecided.",
+        "Confirm the chosen license matches the maintainer's intended reuse posture."
+      ]
+    },
+    {
+      "id": "usage-examples",
+      "title": "Add example workflows and CLI usage docs",
+      "issue": 2,
+      "type": "documentation",
+      "priority": "high",
+      "difficulty": "easy",
+      "status": "open",
+      "rationale": "Concrete examples make the CLI easier to understand and give new contributors safe documentation work to start with.",
+      "acceptance_criteria": [
+        "Add docs/examples.md or an equivalent examples document.",
+        "Document at least three copy-pasteable commands.",
+        "Include examples for scanning a repository, scanning a subfolder, and using check mode."
+      ]
+    },
+    {
+      "id": "dry-run-mode",
+      "title": "Implement optional dry-run mode for CLI",
+      "issue": 3,
+      "type": "feature",
+      "priority": "medium",
+      "difficulty": "medium",
+      "status": "open",
+      "rationale": "A dry-run mode would let users preview manifest and Markdown inventory changes without touching files.",
+      "acceptance_criteria": [
+        "Add a --dry-run CLI option.",
+        "Print which files would be created or updated.",
+        "Do not modify files while dry-run mode is active.",
+        "Add tests that prove files are left unchanged."
+      ]
+    },
+    {
+      "id": "manifest-tracking-policy",
+      "title": "Decide whether generated manifest.json should be tracked",
+      "issue": 4,
+      "type": "project-decision",
+      "priority": "medium",
+      "difficulty": "easy",
+      "status": "open",
+      "rationale": "Generated manifests are useful examples, but tracking them by default can create noisy diffs in real projects.",
+      "acceptance_criteria": [
+        "Record the tracking policy in documentation.",
+        "Keep manifest.json ignored unless a tracked example is intentionally added.",
+        "Update README.md or docs/examples.md with the chosen guidance."
+      ]
+    }
+  ],
+  "maintenance_notes": [
+    "Keep this file hand-editable and dependency-free.",
+    "When an issue closes, update the matching suggestion status.",
+    "Prefer small suggestions that are easy for contributors to understand and verify."
+  ]
+}
