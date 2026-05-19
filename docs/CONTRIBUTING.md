@@ -39,6 +39,10 @@ python -m unittest discover -s tests -v
 python graft.py --help
 ```
 
+## Licensing
+
+Graft is licensed under the Apache License, Version 2.0. Unless explicitly stated otherwise, contributions submitted to this repository are provided under the same Apache-2.0 license.
+
 ## Pull request checklist
 
 - Explain the behavior change in plain language.
