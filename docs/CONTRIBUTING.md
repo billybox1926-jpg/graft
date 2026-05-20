@@ -56,12 +56,15 @@ To apply formatting changes:
 python -m ruff format .
 ```
 
-Before opening a pull request, run:
+### Optional security scan in CI
+
+The project includes a low-impact Bandit security scan for Python code (`graft.py` and `tests/`) as a separate GitHub Actions job. This scan is optional, does not block other CI checks, and is run automatically on pushes and pull requests to `master`. No runtime dependencies are added.
+
+To run locally, you can install Bandit and execute:
 
 ```bash
-python -m py_compile graft.py
-python -m unittest discover -s tests -v
-python graft.py --help
+python -m pip install bandit
+python -m bandit -r graft.py tests -ll
 ```
 
 ## Licensing
