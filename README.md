@@ -41,6 +41,12 @@ python graft.py . --check
 python graft.py ./src --readme ./src/README.md --notes ./docs/INVENTORY.md --manifest ./docs/manifest.json
 ```
 
+## Output targets
+
+Graft writes generated output to the paths you provide. The `--manifest` option writes the JSON manifest to the selected file. The `--readme` and `--notes` options update or append the generated inventory block in the selected Markdown files.
+
+Use `--dry-run` first if you want to preview whether Graft would create or update those files before writing changes.
+
 ## Generated manifest policy
 
 `manifest.json` is generated output and is ignored by default. Keep it untracked unless a project intentionally wants to review manifest changes.
