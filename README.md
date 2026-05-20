@@ -56,6 +56,7 @@ Use `--dry-run` first if you want to preview whether Graft would create or updat
 - [Examples](docs/examples.md)
 - [Architecture](docs/architecture.md)
 - [Contributing](docs/CONTRIBUTING.md)
+- [Security](SECURITY.md)
 
 ## Development
 
@@ -88,6 +89,7 @@ Early setup. The CLI is usable, tests are in place, CI checks the basic Python w
 | `docs/maintainer_workflow.md` | markdown | This document describes how maintainers of Graft should handle issues, pull requests, releases, and repository upkeep. |  |
 | `docs/notes.md` | markdown | Notes for the Graft CLI project. |  |
 | `docs/ROADMAP.md` | markdown | Graft is a small documentation utility for keeping repository inventories honest. The core CLI is stable; release readiness comes next. |  |
+| `docs/SECURITY.md` | markdown | Security policy for reporting concerns about Graft. |  |
 | `docs/suggestions.json` | json | Current project map for keeping Graft small, dependency-free, contributor-friendly, and release-ready. |  |
 | `graft.py` | python | graft — Auto-generate directory inventories and JSON manifests. | Usage: python graft.py --help |
 | `LICENSE` | file | (no summary yet) |  |
