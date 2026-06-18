@@ -65,27 +65,45 @@ class InventoryGenerator:
         self.root = root.resolve()
         self.begin = begin_marker
         self.end = end_marker
-        self.exclude_names = exclude_names or {"__pycache__", ".git", ".hg", ".svn", ".DS_Store"}
+        explicit = set(exclude_names or ())
+        defaults = {"__pycache__", ".git", ".hg", ".svn", ".DS_Store", "__pypackages__", "node_modules", "dist", "build", "out", "target", "proof"}
+        self.exclude_names = explicit | defaults
         self.exclude_files = exclude_files or {"manifest.json"}
         self.exclude_patterns = list(exclude_patterns)
         self._gitignore_patterns: list[str] = []
 
-        ignore_source = extra_ignore_file or (self.root / ".gitignore")
-        if ignore_source.exists():
-            self._gitignore_patterns = [
-                line.strip()
-                for line in ignore_source.read_text(encoding="utf-8", errors="replace").splitlines()
-                if line.strip() and not line.strip().startswith("#")
-            ]
+        ignore_sources: list[Path] = []
+        gitignore = self.root / ".gitignore"
+        if gitignore.exists():
+            ignore_sources.append(gitignore)
+        if extra_ignore_file and extra_ignore_file.exists() and extra_ignore_file != gitignore:
+            ignore_sources.append(extra_ignore_file)
+
+        self._ignore_rules: list[tuple[bool, str]] = []
+        for source in ignore_sources:
+            for line in source.read_text(encoding="utf-8", errors="replace").splitlines():
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                negated = line.startswith("!")
+                pattern = line[1:] if negated else line
+                self._ignore_rules.append((negated, pattern))
 
     @staticmethod
     def _read_text(path: Path) -> str:
         return path.read_text(encoding="utf-8", errors="replace")
 
-    @staticmethod
-    def _write_text(path: Path, text: str) -> None:
+    def _write_text(self, path: Path, text: str) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(text, encoding="utf-8", newline="\n")
+        newline = "\n"
+        if path.exists():
+            try:
+                original = path.read_bytes()
+                if original.count(b"\r\n") >= max(1, original.count(b"\n") // 2):
+                    newline = "\r\n"
+            except OSError:
+                pass
+        path.write_text(text, encoding="utf-8", newline=newline)
 
     @staticmethod
     def _mtime_iso(path: Path) -> str:
@@ -129,17 +147,21 @@ class InventoryGenerator:
         if Path(rel).name in self.exclude_files:
             return True
 
-        for pattern in [*self.exclude_patterns, *self._gitignore_patterns]:
-            pattern = pattern.replace("\\", "/")
-            if not pattern or pattern.startswith("!"):
+        matched = False
+        for negated, raw in [*self._ignore_rules, *[(False, p) for p in self.exclude_patterns]]:
+            pattern = raw.replace("\\", "/")
+            if not pattern:
                 continue
             if pattern.endswith("/") and (rel.startswith(pattern.rstrip("/") + "/") or rel == pattern.rstrip("/")):
-                return True
+                matched = not negated
+                continue
             if fnmatch.fnmatch(rel, pattern) or fnmatch.fnmatch(Path(rel).name, pattern):
-                return True
+                matched = not negated
+                continue
             if fnmatch.fnmatch(rel, f"*/{pattern}") or fnmatch.fnmatch(rel, f"{pattern}/*"):
-                return True
-        return False
+                matched = not negated
+                continue
+        return bool(matched)
 
     @classmethod
     def _py_docstring_summary_and_usage(cls, py_path: Path) -> tuple[str, str]:
@@ -427,16 +449,17 @@ class InventoryGenerator:
     def _extract_block(self, text: str) -> str:
         if self.begin not in text or self.end not in text:
             return ""
-        _, rest = text.split(self.begin, 1)
-        block, _ = rest.split(self.end, 1)
-        return block
+        begin_index = text.index(self.begin) + len(self.begin)
+        end_index = text.index(self.end, begin_index)
+        return text[begin_index:end_index]
 
     def replace_block(self, text: str, block_md: str) -> str:
         if self.begin not in text or self.end not in text:
             return text.rstrip() + "\n\n" + self.begin + "\n" + block_md + "\n" + self.end + "\n"
-        before, rest = text.split(self.begin, 1)
-        _, after = rest.split(self.end, 1)
-        return before.rstrip() + "\n\n" + self.begin + "\n" + block_md + "\n" + self.end + after
+        begin_index = text.index(self.begin)
+        end_index = text.index(self.end, begin_index + len(self.begin))
+        return text[:begin_index].rstrip() + "\n\n" + self.begin + "\n" + block_md + "\n" + self.end + text[end_index + len(self.end):]
+
 
     def check_targets(
         self,
