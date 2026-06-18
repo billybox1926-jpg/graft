@@ -65,22 +65,39 @@ class InventoryGenerator:
         self.root = root.resolve()
         self.begin = begin_marker
         self.end = end_marker
-        explicit = set(exclude_names or ())
-        defaults = {"__pycache__", ".git", ".hg", ".svn", ".DS_Store", "__pypackages__", "node_modules", "dist", "build", "out", "target", "proof"}
-        self.exclude_names = explicit | defaults
-        self.exclude_files = exclude_files or {"manifest.json"}
-        self.exclude_patterns = list(exclude_patterns)
-        self._gitignore_patterns: list[str] = []
+        explicit_exclude_names = set(exclude_names or ())
+        default_exclude_names = {
+            "__pycache__",
+            ".git",
+            ".hg",
+            ".svn",
+            ".DS_Store",
+            "__pypackages__",
+            "node_modules",
+            "dist",
+            "build",
+            "out",
+            "target",
+            "proof",
+        }
+        self.exclude_names = explicit_exclude_names | default_exclude_names
 
-        ignore_sources: list[Path] = []
+        explicit_exclude_files = set(exclude_files or ())
+        default_exclude_files = {"manifest.json"}
+        self.exclude_files = explicit_exclude_files | default_exclude_files
+        self.exclude_patterns = list(exclude_patterns)
+        self._ignore_rules: list[tuple[bool, str]] = []
+        self._load_ignore_rules(extra_ignore_file)
+
+    def _load_ignore_rules(self, extra_ignore_file: Path | None) -> None:
+        sources: list[Path] = []
         gitignore = self.root / ".gitignore"
         if gitignore.exists():
-            ignore_sources.append(gitignore)
+            sources.append(gitignore)
         if extra_ignore_file and extra_ignore_file.exists() and extra_ignore_file != gitignore:
-            ignore_sources.append(extra_ignore_file)
-
-        self._ignore_rules: list[tuple[bool, str]] = []
-        for source in ignore_sources:
+            sources.append(extra_ignore_file)
+        self._ignore_rules = []
+        for source in sources:
             for line in source.read_text(encoding="utf-8", errors="replace").splitlines():
                 line = line.strip()
                 if not line or line.startswith("#"):
@@ -173,22 +190,45 @@ class InventoryGenerator:
             return "", ""
 
         summary = cls._first_line(doc)
+        usage_hint = ""
+        for node in module.body:
+            if isinstance(node, ast.Assign):
+                for target in node.targets:
+                    if isinstance(target, ast.Name) and target.id.lower() in {"usage", "description"}:
+                        if isinstance(node.value, ast.Constant) and isinstance(node.value.value, str):
+                            usage_hint = node.value.value.strip()
+                        elif isinstance(node.value, ast.JoinedStr):
+                            passage = []
+                            for value in node.value.values:
+                                if isinstance(value, ast.Constant) and isinstance(value.value, str):
+                                    passage.append(value.value)
+                            usage_hint = "".join(passage).strip()
+                        if usage_hint:
+                            break
         usage = ""
+        if usage_hint:
+            usage = f"Usage: {usage_hint[:140]}"
+        else:
+            usage = cls._usage_from_doc(doc)
+
+        fallback_usage = f"Usage: python {py_path.name} --help"
+        return summary or "", usage or fallback_usage
+
+    @classmethod
+    def _usage_from_doc(cls, doc: str) -> str:
         lines = doc.splitlines()
         for index, line in enumerate(lines):
             stripped = line.strip()
             if stripped.lower().startswith("usage:"):
                 rest = stripped[6:].strip()
                 if rest:
-                    usage = "Usage: " + rest
-                    break
+                    return f"Usage: {rest[:140]}"
                 for next_line in lines[index + 1 :]:
                     candidate = next_line.strip()
                     if candidate:
-                        usage = "Usage: " + candidate
-                        break
+                        return f"Usage: {candidate[:140]}"
                 break
-        return summary, usage
+        return ""
 
     @classmethod
     def _markdown_summary(cls, md_path: Path) -> tuple[str, str]:
