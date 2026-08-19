@@ -47,6 +47,41 @@ Graft writes generated output to the paths you provide. The `--manifest` option 
 
 Use `--dry-run` first if you want to preview whether Graft would create or update those files before writing changes.
 
+### Path containment
+
+Graft writes files, so output paths are constrained to the directory being
+scanned. A `--manifest`, `--readme`, or `--notes` path that resolves outside
+the scanned root is refused with exit code `2` and nothing is written:
+
+```console
+$ python graft.py ./proj --manifest ../escaped.json
+[error] output path escapes the scanned root: /tmp/escaped.json
+  root: /tmp/proj
+  pass --allow-outside-root to write here anyway
+```
+
+Pass `--allow-outside-root` when writing outside the scanned tree is
+deliberate. Keeping the default strict matters most when Graft runs inside
+automation, where the scanned path may not be fully trusted.
+
+Symlinked files that resolve outside the scanned root are skipped, so a link
+cannot pull unrelated file content into the manifest. A symlink that cannot be
+resolved at all is also skipped rather than indexed. Use
+`--no-follow-symlinks` to skip every symlink, including ones that stay inside
+the root.
+
+### Exit codes
+
+| Code | Meaning |
+|------|---------|
+| `0` | Success |
+| `1` | Scan target is not a directory, or `--check` found drift |
+| `2` | An output path escaped the scanned root |
+| `3` | A target file could not be written |
+
+A write failure — a read-only target, a full disk, a path blocked by an
+existing file — reports the offending path instead of raising a traceback.
+
 ## Generated manifest policy
 
 `manifest.json` is generated output and is ignored by default. Keep it untracked unless a project intentionally wants to review manifest changes.

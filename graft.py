@@ -30,6 +30,18 @@ DEFAULT_BEGIN = "<!-- BEGIN INVENTORY -->"
 DEFAULT_END = "<!-- END INVENTORY -->"
 
 
+class GraftError(Exception):
+    """Base class for graft failures that should exit cleanly."""
+
+
+class GraftWriteError(GraftError):
+    """Raised when a target file cannot be written."""
+
+
+class GraftPathError(GraftError):
+    """Raised when an output path is outside the scanned root."""
+
+
 @dataclass(frozen=True)
 class FileEntry:
     path: str
@@ -61,8 +73,10 @@ class InventoryGenerator:
         exclude_files: set[str] | None = None,
         exclude_patterns: Sequence[str] = (),
         extra_ignore_file: Path | None = None,
+        follow_symlinks: bool = True,
     ) -> None:
         self.root = root.resolve()
+        self.follow_symlinks = follow_symlinks
         self.begin = begin_marker
         self.end = end_marker
         explicit_exclude_names = set(exclude_names or ())
@@ -111,7 +125,6 @@ class InventoryGenerator:
         return path.read_text(encoding="utf-8", errors="replace")
 
     def _write_text(self, path: Path, text: str) -> None:
-        path.parent.mkdir(parents=True, exist_ok=True)
         newline = "\n"
         if path.exists():
             try:
@@ -120,7 +133,13 @@ class InventoryGenerator:
                     newline = "\r\n"
             except OSError:
                 pass
-        path.write_text(text, encoding="utf-8", newline=newline)
+        # Surface a readable error instead of an unhandled traceback when the
+        # target is read-only, on a full disk, or otherwise unwritable.
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(text, encoding="utf-8", newline=newline)
+        except OSError as exc:
+            raise GraftWriteError(f"cannot write {path}: {exc}") from exc
 
     @staticmethod
     def _mtime_iso(path: Path) -> str:
@@ -414,6 +433,18 @@ class InventoryGenerator:
             return f"Usage: bash {rel_path}"
         return ""
 
+    def _escapes_root(self, path: Path) -> bool:
+        """True when path resolves outside the scan root (symlink escape)."""
+        try:
+            resolved = path.resolve()
+        except OSError:
+            return True
+        try:
+            resolved.relative_to(self.root)
+        except ValueError:
+            return True
+        return False
+
     def scan(self) -> list[FileEntry]:
         entries: list[FileEntry] = []
         for path in sorted(self.root.rglob("*")):
@@ -421,6 +452,13 @@ class InventoryGenerator:
                 continue
             rel = path.relative_to(self.root).as_posix()
             if self._is_ignored(rel):
+                continue
+            # A symlink can point outside the scanned tree, which would pull
+            # unrelated file content into the manifest. Skip those unless the
+            # caller explicitly opts in.
+            if not self.follow_symlinks and path.is_symlink():
+                continue
+            if self.follow_symlinks and path.is_symlink() and self._escapes_root(path):
                 continue
 
             kind = self._kind_for(path)
@@ -629,7 +667,39 @@ examples:
     parser.add_argument("--exclude", action="append", default=[], help="Additional fnmatch pattern to exclude")
     parser.add_argument("--ignore-file", type=Path, default=None, help="Gitignore-style file to use for exclusions")
     parser.add_argument("--no-gitignore", action="store_true", help="Do not read .gitignore")
+    parser.add_argument(
+        "--no-follow-symlinks",
+        action="store_true",
+        help="Skip symlinked files entirely instead of following them",
+    )
+    parser.add_argument(
+        "--allow-outside-root",
+        action="store_true",
+        help="Permit --readme/--notes/--manifest paths outside the scanned directory",
+    )
     return parser
+
+
+def resolve_output(root: Path, candidate: Path, *, allow_outside: bool) -> Path:
+    """Resolve an output path, refusing to escape the scan root by default.
+
+    graft writes files, so an unconstrained --manifest/--readme/--notes lets a
+    caller redirect output anywhere on disk. That is fine for interactive local
+    use but undesirable in automation, so escaping the root now requires an
+    explicit opt-in.
+    """
+    resolved = (root / candidate).resolve() if not candidate.is_absolute() else candidate.resolve()
+    if allow_outside:
+        return resolved
+    try:
+        resolved.relative_to(root)
+    except ValueError:
+        raise GraftPathError(
+            f"output path escapes the scanned root: {resolved}\n"
+            f"  root: {root}\n"
+            f"  pass --allow-outside-root to write here anyway"
+        ) from None
+    return resolved
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -640,10 +710,21 @@ def main(argv: Sequence[str] | None = None) -> int:
     if not root.is_dir():
         print(f"[error] Not a directory: {root}", file=sys.stderr)
         return 1
+    root = root.resolve()
 
-    readme = args.readme or (root / "README.md")
-    notes = args.notes or (root / "docs/notes.md")
-    manifest = args.manifest or (root / "manifest.json")
+    try:
+        readme = resolve_output(
+            root, args.readme or Path("README.md"), allow_outside=args.allow_outside_root
+        )
+        notes = resolve_output(
+            root, args.notes or Path("docs/notes.md"), allow_outside=args.allow_outside_root
+        )
+        manifest = resolve_output(
+            root, args.manifest or Path("manifest.json"), allow_outside=args.allow_outside_root
+        )
+    except GraftPathError as exc:
+        print(f"[error] {exc}", file=sys.stderr)
+        return 2
 
     generator = InventoryGenerator(
         root,
@@ -651,6 +732,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         end_marker=args.end_marker,
         exclude_patterns=args.exclude,
         extra_ignore_file=None if args.no_gitignore else (args.ignore_file or (root / ".gitignore")),
+        follow_symlinks=not args.no_follow_symlinks,
     )
 
     print(f"Scanning {root} ...")
@@ -666,9 +748,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         print("Done (dry-run).")
         return 0
 
-    generator.write_manifest(entries, manifest)
-    print(f"Wrote {manifest}")
-    generator.update_targets(entries, [readme, notes])
+    try:
+        generator.write_manifest(entries, manifest)
+        print(f"Wrote {manifest}")
+        generator.update_targets(entries, [readme, notes])
+    except GraftWriteError as exc:
+        print(f"[error] {exc}", file=sys.stderr)
+        return 3
     print("Done.")
     return 0
 
