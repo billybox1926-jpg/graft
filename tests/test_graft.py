@@ -3,7 +3,14 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from graft import InventoryGenerator, main
+from graft import (
+    GraftError,
+    GraftPathError,
+    GraftWriteError,
+    InventoryGenerator,
+    main,
+    resolve_output,
+)
 
 
 class InventoryGeneratorTests(unittest.TestCase):
@@ -313,6 +320,175 @@ class CheckModeTests(unittest.TestCase):
             self.assertFalse(manifest.exists())
             self.assertEqual(before_readme, readme.read_text(encoding="utf-8"))
             self.assertEqual(before_notes, notes.read_text(encoding="utf-8"))
+
+
+class OutputPathContainmentTests(unittest.TestCase):
+    """graft writes files, so output paths must stay inside the scanned root
+    unless the caller explicitly opts out."""
+
+    def test_resolve_output_allows_paths_inside_root(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            resolved = resolve_output(root, Path("docs/notes.md"), allow_outside=False)
+            self.assertEqual(resolved, root / "docs" / "notes.md")
+
+    def test_resolve_output_rejects_escaping_relative_path(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = (Path(tmp) / "proj").resolve()
+            root.mkdir()
+            with self.assertRaises(GraftPathError):
+                resolve_output(root, Path("../escaped.json"), allow_outside=False)
+
+    def test_resolve_output_rejects_escaping_absolute_path(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = (Path(tmp) / "proj").resolve()
+            root.mkdir()
+            outside = Path(tmp).resolve() / "escaped.json"
+            with self.assertRaises(GraftPathError):
+                resolve_output(root, outside, allow_outside=False)
+
+    def test_resolve_output_permits_escape_with_explicit_opt_in(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = (Path(tmp) / "proj").resolve()
+            root.mkdir()
+            outside = Path(tmp).resolve() / "escaped.json"
+            resolved = resolve_output(root, outside, allow_outside=True)
+            self.assertEqual(resolved, outside)
+
+    def test_cli_refuses_escaping_manifest_and_writes_nothing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "proj"
+            root.mkdir()
+            (root / "a.py").write_text("x\n", encoding="utf-8")
+            escaped = Path(tmp) / "escaped.json"
+
+            exit_code = main([str(root), "--manifest", str(escaped)])
+
+            self.assertEqual(exit_code, 2)
+            self.assertFalse(escaped.exists())
+
+    def test_cli_allows_escaping_manifest_with_flag(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "proj"
+            root.mkdir()
+            (root / "a.py").write_text("x\n", encoding="utf-8")
+            escaped = Path(tmp) / "escaped.json"
+
+            exit_code = main([
+                str(root), "--manifest", str(escaped), "--allow-outside-root",
+            ])
+
+            self.assertEqual(exit_code, 0)
+            self.assertTrue(escaped.exists())
+
+
+class SymlinkContainmentTests(unittest.TestCase):
+    """A symlink pointing outside the scanned tree would pull unrelated file
+    content into the manifest. Creating real symlinks needs privileges that are
+    not available on every CI runner, so the containment predicate is tested
+    directly as well as end to end."""
+
+    def _generator(self, root: Path) -> InventoryGenerator:
+        return InventoryGenerator(root, extra_ignore_file=root / "missing.ignore")
+
+    def test_escapes_root_detects_inside_and_outside(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = (Path(tmp) / "proj").resolve()
+            (root / "sub").mkdir(parents=True)
+            gen = self._generator(root)
+
+            inside = root / "sub" / "a.py"
+            inside.write_text("x\n", encoding="utf-8")
+            self.assertFalse(gen._escapes_root(inside))
+
+            outside = Path(tmp).resolve() / "secret.txt"
+            outside.write_text("secret\n", encoding="utf-8")
+            self.assertTrue(gen._escapes_root(outside))
+
+    def test_escapes_root_treats_unresolvable_paths_as_escaping(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            gen = self._generator(root)
+
+            class Unresolvable:
+                def resolve(self):
+                    raise OSError("dangling link")
+
+            # Fail safe: if we cannot tell where it points, do not index it.
+            self.assertTrue(gen._escapes_root(Unresolvable()))
+
+    def test_no_follow_symlinks_flag_is_wired_through(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "a.py").write_text("x\n", encoding="utf-8")
+
+            default_gen = self._generator(root)
+            self.assertTrue(default_gen.follow_symlinks)
+
+            strict = InventoryGenerator(
+                root,
+                extra_ignore_file=root / "missing.ignore",
+                follow_symlinks=False,
+            )
+            self.assertFalse(strict.follow_symlinks)
+            # Regular files are unaffected by the flag.
+            self.assertEqual([e.path for e in strict.scan()], ["a.py"])
+
+    @unittest.skipUnless(hasattr(__import__("os"), "symlink"), "symlink unsupported")
+    def test_symlink_escaping_root_is_skipped(self):
+        import os
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "proj"
+            root.mkdir()
+            (root / "a.py").write_text("x\n", encoding="utf-8")
+            outside = Path(tmp) / "secret.txt"
+            outside.write_text("secret\n", encoding="utf-8")
+
+            try:
+                os.symlink(outside, root / "link.txt")
+            except (OSError, NotImplementedError) as exc:
+                self.skipTest(f"cannot create symlink: {exc}")
+
+            paths = [e.path for e in self._generator(root).scan()]
+            self.assertIn("a.py", paths)
+            self.assertNotIn("link.txt", paths)
+
+
+class WriteErrorTests(unittest.TestCase):
+    """An unwritable target should produce a readable error and a non-zero
+    exit code rather than an unhandled traceback."""
+
+    def test_write_text_raises_graft_write_error(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            blocker = root / "a.py"
+            blocker.write_text("x\n", encoding="utf-8")
+            gen = InventoryGenerator(root, extra_ignore_file=root / "missing.ignore")
+
+            # Treating an existing file as a directory cannot succeed on any
+            # platform, so this exercises the OSError path deterministically.
+            with self.assertRaises(GraftWriteError) as ctx:
+                gen._write_text(blocker / "nested" / "out.json", "data")
+
+            self.assertIn("cannot write", str(ctx.exception))
+
+    def test_graft_write_error_is_a_graft_error(self):
+        self.assertTrue(issubclass(GraftWriteError, GraftError))
+        self.assertTrue(issubclass(GraftPathError, GraftError))
+
+    def test_cli_reports_write_failure_with_exit_code(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "a.py").write_text("x\n", encoding="utf-8")
+            blocker = root / "blocked"
+            blocker.write_text("not a directory\n", encoding="utf-8")
+
+            exit_code = main([
+                str(root), "--manifest", str(blocker / "nested" / "m.json"),
+            ])
+
+            self.assertEqual(exit_code, 3)
 
 
 if __name__ == "__main__":
